@@ -11,5 +11,17 @@
         <input type="file" name="file" required><br><br>
         <button type="submit">Check Profanity</button>
     </form>
+
+    <!-- This is where we display the results -->
+    {% if results %}
+        <div>
+            <h2>Profanities Detected:</h2>
+            <ul>
+                {% for entry in results %}
+                    <li><strong>Line {{ entry.line_number }}</strong>: {{ entry.line_text }} (Profanity: {{ entry.profanity }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
 </body>
 </html>
