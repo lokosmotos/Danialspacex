@@ -7,10 +7,18 @@
 <body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:2em;">
   <h1>🧩 Excel ⇄ SRT Converter</h1>
 
-  <h2>📥 Convert Excel to SRT</h2>
+  <h2>📥 Excel to SRT</h2>
   <form action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
     <input type="file" name="excelfile" required><br><br>
     <button type="submit">Convert & Download SRT</button>
+  </form>
+
+  <hr style="margin:2em 0; border:1px solid #555;">
+
+  <h2>📤 SRT to Excel</h2>
+  <form action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
+    <input type="file" name="srtfile" required><br><br>
+    <button type="submit">Convert & Download Excel</button>
   </form>
 </body>
 </html>
