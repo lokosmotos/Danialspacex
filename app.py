@@ -102,10 +102,12 @@ def convert_srt_to_excel():
 
     df = pd.DataFrame(data)
 
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    df.to_excel(temp.name, index=False)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp:
+    with pd.ExcelWriter(temp.name, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    temp.flush()  # ensure it's written
 
-    return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
+return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
 
 
 if __name__ == '__main__':
