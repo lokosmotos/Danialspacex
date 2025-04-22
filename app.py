@@ -107,20 +107,22 @@ def load_profanity_list():
     return profanity_list
 
 def check_profanity(content):
-    profanity_list = load_profanity_list()
- patterns = [re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE) for word in profanity_list]
+    profanity_list = load_profanity_list()  # Load the list
+    patterns = [re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE) for word in profanity_list]
 
     detected_profanities = []
 
     for line_num, line in enumerate(content.splitlines(), start=1):
-        for word in profanity_list:
-            if re.search(r'\b' + re.escape(word) + r'\b', line, re.IGNORECASE):
+        for pattern, word in zip(patterns, profanity_list):
+            if pattern.search(line):
                 detected_profanities.append({
                     'line_number': line_num,
                     'line_text': line.strip(),
                     'profanity': word
                 })
+
     return detected_profanities
+
 
 @app.route('/check-profanity', methods=['POST'])
 def check_profanity_route():
