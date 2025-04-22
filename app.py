@@ -79,21 +79,19 @@ def convert_srt_to_excel():
 
     content = file.read().decode('utf-8')
 
-    blocks = content.strip().split("\n\n")
-    data = []
+    # Match SRT blocks even if they're not split by newlines
+    pattern = re.compile(r"(\d+)\s*\n?(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\s*\n?([^\d]+)", re.MULTILINE)
+    matches = pattern.findall(content)
 
-    for block in blocks:
-        lines = block.splitlines()
-        if len(lines) >= 3:
-            start_end = lines[1].split(' --> ')
-            start_time = start_end[0].strip()
-            end_time = start_end[1].strip()
-            subtitle_text = ' '.join(lines[2:])  # combine multi-line subtitles
-            data.append({
-                'Start Time': start_time,
-                'End Time': end_time,
-                'Subtitle Text': subtitle_text
-            })
+    data = []
+    for match in matches:
+        _, start, end, text = match
+        cleaned_text = ' '.join(text.strip().splitlines()).strip()
+        data.append({
+            'Start Time': start,
+            'End Time': end,
+            'Subtitle Text': cleaned_text
+        })
 
     df = pd.DataFrame(data)
 
@@ -102,6 +100,7 @@ def convert_srt_to_excel():
             df.to_excel(writer, index=False)
         temp.flush()
         return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
+
 
 
 
