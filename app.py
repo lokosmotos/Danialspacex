@@ -85,15 +85,10 @@ def convert_srt_to_excel():
     for block in blocks:
         lines = block.splitlines()
         if len(lines) >= 3:
-            # Format:
-            # 1
-            # 00:00:01,000 --> 00:00:04,000
-            # Subtitle Text
             start_end = lines[1].split(' --> ')
             start_time = start_end[0].strip()
             end_time = start_end[1].strip()
-            subtitle_text = ' '.join(lines[2:])  # in case of multiple lines
-
+            subtitle_text = ' '.join(lines[2:])  # combine multi-line subtitles
             data.append({
                 'Start Time': start_time,
                 'End Time': end_time,
@@ -103,11 +98,11 @@ def convert_srt_to_excel():
     df = pd.DataFrame(data)
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp:
-    with pd.ExcelWriter(temp.name, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    temp.flush()  # ensure it's written
+        with pd.ExcelWriter(temp.name, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        temp.flush()
+        return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
 
-return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
 
 
 if __name__ == '__main__':
