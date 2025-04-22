@@ -195,46 +195,39 @@
             }
         }
 
-        // Start loading animation
+        // Start the loading game when form is submitted
         uploadForm.addEventListener('submit', function(e) {
-            // Show loading game
             loadingGame.classList.remove('hidden');
-            setTimeout(() => loadingGame.classList.remove('opacity-0'), 10);
-            
-            // Reset game
-            score = 0;
-            progress = 0;
-            gameScore.textContent = `Score: ${score}`;
+            setTimeout(() => {
+                loadingGame.classList.add('opacity-100');
+            }, 100);
+
             generateGameBoard();
-            
-            // Simulate progress
+            progress = 0;
+            score = 0;
+            gameScore.textContent = 'Score: 0';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0% analyzed';
+
+            // Simulate progress (remove if real progress updates via WebSocket or server-sent events)
             progressInterval = setInterval(() => {
-                progress += Math.random() * 5;
-                if (progress > 100) progress = 100;
-                progressBar.style.width = `${progress}%`;
-                progressText.textContent = `${Math.floor(progress)}% analyzed`;
-                
-                if (progress === 100) {
+                if (progress >= 100) {
                     clearInterval(progressInterval);
+                } else {
+                    progress += Math.floor(Math.random() * 5) + 1;
+                    if (progress > 100) progress = 100;
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = `${progress}% analyzed`;
                 }
             }, 500);
         });
 
-        // Skip game button
-        document.getElementById('skipGameBtn').addEventListener('click', function() {
+        // Skip button logic
+        document.getElementById('skipGameBtn').addEventListener('click', () => {
             clearInterval(progressInterval);
             progressBar.style.width = '100%';
             progressText.textContent = '100% analyzed';
         });
-
-        // Auto-replace button
-        {% if results %}
-        document.getElementById('autoReplaceBtn').addEventListener('click', function() {
-            document.querySelectorAll('input[name^="replacement_"]').forEach(input => {
-                input.value = '[CENSORED]';
-            });
-        });
-        {% endif %}
     </script>
 </body>
 </html>
