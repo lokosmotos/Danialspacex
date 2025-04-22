@@ -12,16 +12,21 @@
         <button type="submit">Check Profanity</button>
     </form>
 
-    <!-- This is where we display the results -->
-    {% if results %}
-        <div>
+    {% if profanities %}
+        <form action="/amend-profanity" method="POST">
             <h2>Profanities Detected:</h2>
             <ul>
-                {% for entry in results %}
-                    <li><strong>Line {{ entry.line_number }}</strong>: {{ entry.line_text }} (Profanity: {{ entry.profanity }})</li>
+                {% for entry in profanities %}
+                    <li>
+                        <strong>Line {{ entry.line_number }}:</strong><br>
+                        Original: {{ entry.line_text }}<br>
+                        Amendment: <input type="text" name="amended_text_{{ entry.line_number }}" value="{{ entry.line_text }}"><br>
+                        Profanity: {{ entry.profanity }}<br><br>
+                    </li>
                 {% endfor %}
             </ul>
-        </div>
+            <button type="submit">Submit Amendments</button>
+        </form>
     {% endif %}
 </body>
 </html>
