@@ -108,14 +108,19 @@ def load_profanity_list():
         profanity_list = json.load(file)
     return profanity_list
 
-def check_profanity(text):
+def check_profanity(content):
     profanity_list = load_profanity_list()  # Load the list
     detected_profanities = []
 
-    # Loop through each word in the list and check if it's in the text
-    for word in profanity_list:
-        if re.search(r'\b' + re.escape(word) + r'\b', text, re.IGNORECASE):
-            detected_profanities.append(word)
+    # Loop through each line and check for profanities
+    for line_num, line in enumerate(content.splitlines(), start=1):
+        for word in profanity_list:
+            if re.search(r'\b' + re.escape(word) + r'\b', line, re.IGNORECASE):
+                detected_profanities.append({
+                    'line_number': line_num,
+                    'line_text': line.strip(),
+                    'profanity': word
+                })
 
     return detected_profanities
 
@@ -129,7 +134,12 @@ def check_profanity_route():
         profanities = check_profanity(content)
 
         if profanities:
-            return f"Profanities detected: {', '.join(profanities)}"
+            # Display a more detailed list with line numbers
+            result = "<h2>Profanities Detected:</h2><ul>"
+            for entry in profanities:
+                result += f"<li><strong>Line {entry['line_number']}</strong>: {entry['line_text']} (Profanity: {entry['profanity']})</li>"
+            result += "</ul>"
+            return result
         else:
             return "No profanities detected"
     
