@@ -71,6 +71,42 @@ def convert_excel_to_srt():
 
     return send_file(temp.name, as_attachment=True, download_name='converted_from_excel.srt')
 
+@app.route('/convert-srt-to-excel', methods=['POST'])
+def convert_srt_to_excel():
+    file = request.files['srtfile']
+    if not file.filename.endswith('.srt'):
+        return redirect('/converter')
+
+    content = file.read().decode('utf-8')
+
+    blocks = content.strip().split("\n\n")
+    data = []
+
+    for block in blocks:
+        lines = block.splitlines()
+        if len(lines) >= 3:
+            # Format:
+            # 1
+            # 00:00:01,000 --> 00:00:04,000
+            # Subtitle Text
+            start_end = lines[1].split(' --> ')
+            start_time = start_end[0].strip()
+            end_time = start_end[1].strip()
+            subtitle_text = ' '.join(lines[2:])  # in case of multiple lines
+
+            data.append({
+                'Start Time': start_time,
+                'End Time': end_time,
+                'Subtitle Text': subtitle_text
+            })
+
+    df = pd.DataFrame(data)
+
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    df.to_excel(temp.name, index=False)
+
+    return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
