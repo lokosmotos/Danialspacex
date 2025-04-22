@@ -58,7 +58,7 @@
 
         <!-- Upload Section -->
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
-            <form id="uploadForm" action="/check-profanity" method="post" enctype="multipart/form-data" class="space-y-4">
+            <form id="uploadForm" class="space-y-4">
                 <div class="file-upload rounded-lg p-8 text-center cursor-pointer">
                     <input type="file" name="file" id="fileInput" required class="hidden">
                     <label for="fileInput" class="cursor-pointer">
@@ -70,7 +70,7 @@
                         <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm"></p>
                     </label>
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                     </svg>
@@ -106,17 +106,16 @@
             </div>
         </div>
 
-        <!-- Results Section -->
-        {% if results %}
-        <div id="resultsSection" class="bg-gray-800 rounded-xl p-6 shadow-lg">
+        <!-- Results Section (Hidden by default) -->
+        <div id="resultsSection" class="bg-gray-800 rounded-xl p-6 shadow-lg hidden">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-red-400">🚨 Detected Profanities</h2>
-                <span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
-                    {{ results|length }} found
+                <span id="profanityCount" class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
+                    0 found
                 </span>
             </div>
             
-            <form action="/confirm-replacements" method="post">
+            <form id="replacementsForm">
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead>
@@ -126,38 +125,25 @@
                                 <th class="pb-3 font-medium">Replacement</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-700">
-                            {% for item in results %}
-                            <tr>
-                                <td class="py-3 text-gray-300 font-mono">{{ item.line_number }}</td>
-                                <td class="py-3">
-                                    {{ item.text|replace(item.profanity, '<span class="profanity-highlight">' ~ item.profanity ~ '</span>')|raw }}
-                                </td>
-                                <td class="py-3">
-                                    <input type="text" name="replacement_{{ item.line_number }}" 
-                                           value="{{ item.suggestion ? item.suggestion : '[CENSORED]' }}"
-                                           class="bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full focus:border-blue-500 focus:outline-none">
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        <tbody id="resultsBody" class="divide-y divide-gray-700">
+                            <!-- Results will be inserted here by JavaScript -->
                         </tbody>
                     </table>
                 </div>
                 
                 <div class="mt-6 flex flex-col sm:flex-row gap-3">
-                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <button type="button" id="confirmBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                         Confirm Replacements & Run QC
                     </button>
                     <button type="button" id="autoReplaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
-                        Auto-Replace All with Suggestions
+                        Auto-Replace All with [CENSORED]
                     </button>
                 </div>
             </form>
         </div>
-        {% endif %}
     </div>
 
     <script>
@@ -173,10 +159,20 @@
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
         const gameScore = document.getElementById('gameScore');
-        const uploadForm = document.getElementById('uploadForm');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsBody = document.getElementById('resultsBody');
+        const profanityCount = document.getElementById('profanityCount');
         let score = 0;
         let progress = 0;
         let progressInterval;
+
+        // Sample profanity data for demonstration
+        const sampleResults = [
+            { line_number: 42, text: "What the hell are you doing?", profanity: "hell" },
+            { line_number: 87, text: "This is damn ridiculous!", profanity: "damn" },
+            { line_number: 112, text: "You're such a bitch sometimes", profanity: "bitch" }
+        ];
 
         // Generate game board
         function generateGameBoard() {
@@ -195,38 +191,87 @@
             }
         }
 
-        // Start the loading game when form is submitted
-        uploadForm.addEventListener('submit', function(e) {
+        // Show results
+        function showResults() {
+            resultsBody.innerHTML = '';
+            sampleResults.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-3 text-gray-300 font-mono">${item.line_number}</td>
+                    <td class="py-3">${item.text.replace(item.profanity, `<span class="profanity-highlight">${item.profanity}</span>`)}</td>
+                    <td class="py-3">
+                        <input type="text" name="replacement_${item.line_number}" 
+                               value="[CENSORED]"
+                               class="bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full focus:border-blue-500 focus:outline-none">
+                    </td>
+                `;
+                resultsBody.appendChild(row);
+            });
+            profanityCount.textContent = `${sampleResults.length} found`;
+            resultsSection.classList.remove('hidden');
+        }
+
+        // Analyze button click
+        analyzeBtn.addEventListener('click', function() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files.length) {
+                alert('Please select a file first');
+                return;
+            }
+
+            // Show loading game
             loadingGame.classList.remove('hidden');
-            setTimeout(() => {
-                loadingGame.classList.add('opacity-100');
-            }, 100);
-
-            generateGameBoard();
-            progress = 0;
+            setTimeout(() => loadingGame.classList.remove('opacity-0'), 10);
+            
+            // Reset game
             score = 0;
-            gameScore.textContent = 'Score: 0';
-            progressBar.style.width = '0%';
-            progressText.textContent = '0% analyzed';
-
-            // Simulate progress (remove if real progress updates via WebSocket or server-sent events)
+            progress = 0;
+            gameScore.textContent = `Score: ${score}`;
+            generateGameBoard();
+            
+            // Simulate progress
             progressInterval = setInterval(() => {
-                if (progress >= 100) {
+                progress += Math.random() * 5;
+                if (progress > 100) progress = 100;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${Math.floor(progress)}% analyzed`;
+                
+                if (progress === 100) {
                     clearInterval(progressInterval);
-                } else {
-                    progress += Math.floor(Math.random() * 5) + 1;
-                    if (progress > 100) progress = 100;
-                    progressBar.style.width = `${progress}%`;
-                    progressText.textContent = `${progress}% analyzed`;
+                    loadingGame.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loadingGame.classList.add('hidden');
+                        showResults();
+                    }, 300);
                 }
             }, 500);
         });
 
-        // Skip button logic
-        document.getElementById('skipGameBtn').addEventListener('click', () => {
+        // Skip game button
+        document.getElementById('skipGameBtn').addEventListener('click', function() {
             clearInterval(progressInterval);
+            progress = 100;
             progressBar.style.width = '100%';
             progressText.textContent = '100% analyzed';
+            setTimeout(() => {
+                loadingGame.classList.add('opacity-0');
+                setTimeout(() => {
+                    loadingGame.classList.add('hidden');
+                    showResults();
+                }, 300);
+            }, 500);
+        });
+
+        // Auto-replace button
+        document.getElementById('autoReplaceBtn').addEventListener('click', function() {
+            document.querySelectorAll('input[name^="replacement_"]').forEach(input => {
+                input.value = '[CENSORED]';
+            });
+        });
+
+        // Confirm button
+        document.getElementById('confirmBtn').addEventListener('click', function() {
+            alert('Replacements confirmed! This would normally save the cleaned file.');
         });
     </script>
 </body>
