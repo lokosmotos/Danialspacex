@@ -20,5 +20,5 @@ def profanity_checker():
     return render_template('profanity_checker.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
+    port = int(os.environ.get("PORT", 5000))  # Use Render's dynamic port
+    app.run(host='0.0.0.0', port=port)        # Bind to all IPs
