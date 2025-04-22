@@ -1,1 +1,6 @@
+Flask
+pandas
+openpyxl
+pysrt
+langdetect
 
