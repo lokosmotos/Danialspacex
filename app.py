@@ -8,7 +8,6 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -80,7 +79,6 @@ def convert_srt_to_excel():
 
     content = file.read().decode('utf-8')
 
-    # Match SRT blocks even if they're not split by newlines
     pattern = re.compile(r"(\d+)\s*\n?(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\s*\n?([^\d]+)", re.MULTILINE)
     matches = pattern.findall(content)
 
@@ -109,10 +107,9 @@ def load_profanity_list():
     return profanity_list
 
 def check_profanity(content):
-    profanity_list = load_profanity_list()  # Load the list
+    profanity_list = load_profanity_list()
     detected_profanities = []
 
-    # Loop through each line and check for profanities
     for line_num, line in enumerate(content.splitlines(), start=1):
         for word in profanity_list:
             if re.search(r'\b' + re.escape(word) + r'\b', line, re.IGNORECASE):
@@ -121,29 +118,42 @@ def check_profanity(content):
                     'line_text': line.strip(),
                     'profanity': word
                 })
-
     return detected_profanities
 
 @app.route('/check-profanity', methods=['POST'])
 def check_profanity_route():
     file = request.files['file']
     if file and (file.filename.endswith('.srt') or file.filename.endswith('.xlsx')):
-        content = file.read().decode('utf-8')
-
-        # Check for profanities in the content
+        content = file.read().decode('utf-8', errors='ignore')
         profanities = check_profanity(content)
 
         if profanities:
-            # Display a more detailed list with line numbers
-            result = "<h2>Profanities Detected:</h2><ul>"
-            for entry in profanities:
-                result += f"<li><strong>Line {entry['line_number']}</strong>: {entry['line_text']} (Profanity: {entry['profanity']})</li>"
-            result += "</ul>"
-            return result
+            return render_template('edit_profanities.html',
+                                   content=content,
+                                   profanities=profanities,
+                                   original_filename=file.filename)
         else:
             return "No profanities detected"
-    
+
     return redirect('/profanity-checker')
+
+@app.route('/final-qc', methods=['POST'])
+def final_qc():
+    content = request.form['edited_content']
+    original_filename = request.form['original_filename']
+    profanities = check_profanity(content)
+
+    if profanities:
+        return render_template('edit_profanities.html',
+                               content=content,
+                               profanities=profanities,
+                               original_filename=original_filename,
+                               message="Still contains profanity!")
+    else:
+        suffix = '.srt' if original_filename.endswith('.srt') else '.txt'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode='w', encoding='utf-8') as temp:
+            temp.write(content)
+        return send_file(temp.name, as_attachment=True, download_name='cleaned_' + original_filename)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
