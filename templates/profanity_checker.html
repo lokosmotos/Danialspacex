@@ -1,32 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Profanity Checker</title>
-</head>
-<body>
-    <h1>Profanity Checker</h1>
-    <form action="/check-profanity" method="POST" enctype="multipart/form-data">
-        <label for="file">Upload an SRT or Excel file:</label><br><br>
-        <input type="file" name="file" required><br><br>
-        <button type="submit">Check Profanity</button>
-    </form>
+<div class="section">
+  <h2>🔍 Profanity Checker</h2>
+  <form action="/check-profanity" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" required><br><br>
+    <button type="submit">Upload & Analyze</button>
+  </form>
+</div>
 
-    {% if profanities %}
-        <form action="/amend-profanity" method="POST">
-            <h2>Profanities Detected:</h2>
-            <ul>
-                {% for entry in profanities %}
-                    <li>
-                        <strong>Line {{ entry.line_number }}:</strong><br>
-                        Original: {{ entry.line_text }}<br>
-                        Amendment: <input type="text" name="amended_text_{{ entry.line_number }}" value="{{ entry.line_text }}"><br>
-                        Profanity: {{ entry.profanity }}<br><br>
-                    </li>
-                {% endfor %}
-            </ul>
-            <button type="submit">Submit Amendments</button>
-        </form>
-    {% endif %}
-</body>
-</html>
+{% if results %}
+  <div class="instructions">
+    <h3>🚨 Detected Profanities</h3>
+    <form action="/confirm-replacements" method="post">
+      <table style="width:100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="border-bottom: 1px solid #444;">Line</th>
+            <th style="border-bottom: 1px solid #444;">Original</th>
+            <th style="border-bottom: 1px solid #444;">Profanity</th>
+            <th style="border-bottom: 1px solid #444;">Replace with</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in results %}
+            <tr>
+              <td>{{ item.line_number }}</td>
+              <td>{{ item.text }}</td>
+              <td><span style="color: #f00; font-weight: bold;">{{ item.profanity }}</span></td>
+              <td>
+                <input type="text" name="replacement_{{ item.line_number }}" value="{{ item.profanity }}">
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <br>
+      <button type="submit">✅ Confirm Replacements & Run QC</button>
+    </form>
+  </div>
+{% endif %}
