@@ -1,18 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Danial Space</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Excel ⇄ SRT Converter | Danial Space</title>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col justify-center items-center">
-    <h1 class="text-4xl font-bold mb-8">Welcome to Danial Space</h1>
-    <div class="space-y-4">
-        <a href="/cc-remover" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Remove CC from SRT</a><br>
-        <a href="/converter" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Excel ↔ SRT Converter</a><br>
-        <a href="/profanity-checker" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Profanity Checker</a>
-    </div>
-    <footer class="absolute bottom-4 text-sm text-gray-400">© Danial Space 2025</footer>
+<body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:2em;">
+  <h1>🧩 Excel ⇄ SRT Converter</h1>
+
+  <h2>📥 Convert Excel to SRT</h2>
+  <form action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
+    <input type="file" name="excelfile" required><br><br>
+    <button type="submit">Convert & Download SRT</button>
+  </form>
 </body>
 </html>
-
