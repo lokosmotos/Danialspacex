@@ -3,22 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <title>Excel ⇄ SRT Converter</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 2em;
+    }
+    .section {
+      margin-bottom: 3em;
+    }
+    .instructions {
+      background: #222;
+      color: #eee;
+      border: 1px solid #444;
+      padding: 1.5em;
+      margin-top: 2em;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      border-radius: 10px;
+    }
+    .instructions code {
+      background: #333;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #0f0;
+    }
+    .instructions a {
+      color: #0bf;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    button {
+      padding: 0.5em 1em;
+      background: #0bf;
+      border: none;
+      color: #000;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    input[type="file"] {
+      margin-top: 1em;
+    }
+  </style>
 </head>
-<body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:2em;">
+<body>
   <h1>🧩 Excel ⇄ SRT Converter</h1>
 
-  <h2>📥 Excel to SRT</h2>
-  <form action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
-    <input type="file" name="excelfile" required><br><br>
-    <button type="submit">Convert & Download SRT</button>
-  </form>
+  <div class="section">
+    <h2>📥 Excel to SRT</h2>
+    <form action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
+      <input type="file" name="excelfile" required><br><br>
+      <button type="submit">Convert & Download SRT</button>
+    </form>
+  </div>
 
-  <hr style="margin:2em 0; border:1px solid #555;">
+  <div class="section">
+    <h2>📤 SRT to Excel</h2>
+    <form action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
+      <input type="file" name="srtfile" required><br><br>
+      <button type="submit">Convert & Download Excel</button>
+    </form>
+  </div>
 
-  <h2>📤 SRT to Excel</h2>
-  <form action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
-    <input type="file" name="srtfile" required><br><br>
-    <button type="submit">Convert & Download Excel</button>
-  </form>
+  <div class="instructions">
+    <h3>📄 Excel Format Instructions (For SRT Conversion)</h3>
+    <ul>
+      <li><strong>Start Time</strong> – Format: <code>HH:MM:SS,mmm</code> (e.g. <code>00:01:05,500</code>)</li>
+      <li><strong>End Time</strong> – Same format as Start Time</li>
+      <li><strong>Subtitle Text</strong> – Your dialogue or captions</li>
+    </ul>
+    <p>Make sure your Excel file includes these three columns, with no empty rows, merged cells, or extra headers.</p>
+    <p><a href="/static/sample_subtitles_template.xlsx" download>📥 Download Sample Excel Template</a></p>
+  </div>
 </body>
 </html>
