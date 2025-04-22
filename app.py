@@ -2,9 +2,13 @@ from flask import Flask, render_template, request, redirect, send_file
 import os
 import re
 import tempfile
+import json
+import pandas as pd
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -44,9 +48,6 @@ def remove_cc():
         return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
 
     return redirect('/cc-remover')
-
-import pandas as pd
-from werkzeug.utils import secure_filename
 
 @app.route('/convert-excel-to-srt', methods=['POST'])
 def convert_excel_to_srt():
@@ -101,8 +102,38 @@ def convert_srt_to_excel():
         temp.flush()
         return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
 
+# Profanity Checking
+def load_profanity_list():
+    with open('static/profanity_list.json', 'r') as file:
+        profanity_list = json.load(file)
+    return profanity_list
 
+def check_profanity(text):
+    profanity_list = load_profanity_list()  # Load the list
+    detected_profanities = []
 
+    # Loop through each word in the list and check if it's in the text
+    for word in profanity_list:
+        if re.search(r'\b' + re.escape(word) + r'\b', text, re.IGNORECASE):
+            detected_profanities.append(word)
+
+    return detected_profanities
+
+@app.route('/check-profanity', methods=['POST'])
+def check_profanity_route():
+    file = request.files['file']
+    if file and (file.filename.endswith('.srt') or file.filename.endswith('.xlsx')):
+        content = file.read().decode('utf-8')
+
+        # Check for profanities in the content
+        profanities = check_profanity(content)
+
+        if profanities:
+            return f"Profanities detected: {', '.join(profanities)}"
+        else:
+            return "No profanities detected"
+    
+    return redirect('/profanity-checker')
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
