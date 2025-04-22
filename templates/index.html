@@ -3,70 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danial Space | Creative Tools</title>
+    <meta name="description" content="Danial Space - Creative tools for subtitle editing and content processing">
+    <title>Danial Space | Creative Tools for Content Professionals</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
         .tool-card {
             transition: all 0.3s ease;
             transform: translateY(0);
+            backdrop-filter: blur(10px);
         }
         .tool-card:hover {
             transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
         }
         .glow {
             text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
         }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 25%), 
+                radial-gradient(circle at 80% 70%, rgba(124, 58, 237, 0.1) 0%, transparent 25%);
+            z-index: -1;
+            animation: float 15s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-10px, -10px); }
+        }
+        #loader {
+            transition: opacity 0.5s ease;
+        }
+        .animate-bounce-slow {
+            animation: bounce-slow 3s infinite;
+        }
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-center items-center px-4">
-    <div class="text-center mb-12">
-        <h1 class="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 glow">
-            Danial Space
-        </h1>
-        <p class="text-xl text-gray-300 max-w-lg">
-            Creative tools for your subtitle and content needs
-        </p>
+<body class="flex flex-col items-center">
+    <!-- Loading Animation -->
+    <div id="loader" class="fixed inset-0 bg-gray-900 flex flex-col items-center justify-center z-50 opacity-100 transition-opacity duration-500">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+        <p class="text-blue-400 font-medium">Loading Danial Space...</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-        <a href="/cc-remover" class="tool-card bg-gray-800 hover:bg-gray-700 rounded-xl p-6 shadow-lg border border-gray-700 flex flex-col items-center">
-            <div class="bg-blue-500/20 p-3 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+    <!-- Main Content -->
+    <main class="w-full max-w-7xl px-4 py-12 flex flex-col items-center">
+        <!-- Header -->
+        <header class="text-center mb-12 animate-bounce-slow">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 glow">
+                Danial Space
+            </h1>
+            <p class="text-xl text-gray-300 max-w-2xl">
+                Powerful tools for subtitle editing, content processing, and media professionals
+            </p>
+        </header>
+
+        <!-- Tools Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mb-12">
+            <!-- CC Remover -->
+            <a href="/cc-remover" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
+                <div class="bg-blue-500/20 p-3 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">CC Remover</h3>
+                <p class="text-gray-400 text-center">Clean your SRT files by removing closed captions and formatting tags</p>
+                <span class="mt-3 text-xs text-blue-400 font-mono">Coming Soon</span>
+            </a>
+            
+            <!-- Converter -->
+            <a href="/converter" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
+                <div class="bg-green-500/20 p-3 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Format Converter</h3>
+                <p class="text-gray-400 text-center">Convert between Excel, CSV, SRT, and VTT formats with ease</p>
+                <span class="mt-3 text-xs text-green-400 font-mono">Beta Available</span>
+            </a>
+            
+            <!-- Profanity Checker -->
+            <a href="/profanity-checker" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
+                <div class="bg-red-500/20 p-3 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Content Analyzer</h3>
+                <p class="text-gray-400 text-center">Check for profanity, sensitive content, and readability metrics</p>
+                <span class="mt-3 text-xs text-red-400 font-mono">New Feature</span>
+            </a>
+        </div>
+
+        <!-- Additional Info Section -->
+        <section class="w-full max-w-3xl bg-gray-800/50 rounded-xl p-6 mt-8 border border-gray-700/30">
+            <h2 class="text-2xl font-bold mb-4 text-center text-blue-400">About Danial Space</h2>
+            <p class="text-gray-300 mb-4">
+                Danial Space provides professional tools for content creators, subtitle editors, and media professionals. 
+                Our tools are designed to streamline your workflow and handle the technical details so you can focus on 
+                creating great content.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div class="bg-gray-700/30 p-4 rounded-lg">
+                    <h3 class="font-semibold text-blue-400 mb-2">Upcoming Features</h3>
+                    <ul class="text-sm text-gray-300 space-y-1">
+                        <li>• Bulk processing for multiple files</li>
+                        <li>• API access for developers</li>
+                        <li>• Advanced timestamp editing</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-700/30 p-4 rounded-lg">
+                    <h3 class="font-semibold text-green-400 mb-2">Recently Added</h3>
+                    <ul class="text-sm text-gray-300 space-y-1">
+                        <li>• VTT format support</li>
+                        <li>• Multi-language detection</li>
+                        <li>• Dark/light mode toggle</li>
+                    </ul>
+                </div>
             </div>
-            <h3 class="text-xl font-semibold mb-2">CC Remover</h3>
-            <p class="text-gray-400 text-center">Clean your SRT files by removing closed captions</p>
-        </a>
-        
-        <a href="/converter" class="tool-card bg-gray-800 hover:bg-gray-700 rounded-xl p-6 shadow-lg border border-gray-700 flex flex-col items-center">
-            <div class="bg-green-500/20 p-3 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Converter</h3>
-            <p class="text-gray-400 text-center">Convert between Excel and SRT formats seamlessly</p>
-        </a>
-        
-        <a href="/profanity-checker" class="tool-card bg-gray-800 hover:bg-gray-700 rounded-xl p-6 shadow-lg border border-gray-700 flex flex-col items-center">
-            <div class="bg-red-500/20 p-3 rounded-full mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-            </div>
-            <h3 class="text-xl font-semibold mb-2">Profanity Checker</h3>
-            <p class="text-gray-400 text-center">Identify and filter inappropriate language in your content</p>
-        </a>
+        </section>
+    </main>
+
+    <!-- Theme Toggle -->
+    <div class="fixed bottom-6 right-6">
+        <button id="themeToggle" class="p-3 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors shadow-lg border border-gray-700/50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
     </div>
 
-    <footer class="mt-16 text-sm text-gray-500">
-        © 2025 Danial Space | All rights reserved
+    <!-- Footer -->
+    <footer class="w-full py-6 text-center text-sm text-gray-500 border-t border-gray-800/50">
+        <div class="container mx-auto px-4">
+            <p>© 2025 Danial Space. All rights reserved.</p>
+            <div class="flex justify-center space-x-4 mt-2">
+                <a href="/privacy" class="hover:text-blue-400 transition-colors">Privacy Policy</a>
+                <a href="/terms" class="hover:text-blue-400 transition-colors">Terms of Service</a>
+                <a href="/contact" class="hover:text-blue-400 transition-colors">Contact Us</a>
+            </div>
+        </div>
     </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Loader animation
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loader');
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, 1000);
+        });
+
+        // Theme toggle functionality
+        const themeToggle = document.getElementById('themeToggle');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // Check for saved theme preference or use system preference
+        const currentTheme = localStorage.getItem('theme') || 
+                            (prefersDarkScheme.matches ? 'dark' : 'light');
+        
+        if (currentTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        // Toggle theme on button click
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // Dispatch event for any other elements that might need to know about theme changes
+            document.dispatchEvent(new CustomEvent('themeChanged', {
+                detail: { theme: isDark ? 'dark' : 'light' }
+            }));
+        });
+
+        // Tool card animation on hover
+        document.querySelectorAll('.tool-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-5px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Simple analytics (optional)
+        window.addEventListener('load', () => {
+            if (window.location.hostname !== 'localhost') {
+                fetch('https://api.danialspace.com/analytics/pageview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        page: window.location.pathname,
+                        referrer: document.referrer,
+                    })
+                });
+            }
+        });
+    </script>
 </body>
 </html>
