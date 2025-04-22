@@ -108,6 +108,8 @@ def load_profanity_list():
 
 def check_profanity(content):
     profanity_list = load_profanity_list()
+ patterns = [re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE) for word in profanity_list]
+
     detected_profanities = []
 
     for line_num, line in enumerate(content.splitlines(), start=1):
