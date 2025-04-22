@@ -45,6 +45,33 @@ def remove_cc():
 
     return redirect('/cc-remover')
 
+import pandas as pd
+from werkzeug.utils import secure_filename
+
+@app.route('/convert-excel-to-srt', methods=['POST'])
+def convert_excel_to_srt():
+    file = request.files['excelfile']
+    if not file.filename.endswith(('.xls', '.xlsx')):
+        return redirect('/converter')
+
+    df = pd.read_excel(file)
+
+    srt_output = []
+    for i, row in df.iterrows():
+        srt_output.append(f"{i+1}")
+        srt_output.append(f"{row['Start Time']} --> {row['End Time']}")
+        srt_output.append(f"{row['Subtitle Text']}")
+        srt_output.append("")  # Empty line between entries
+
+    srt_content = "\n".join(srt_output)
+
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
+    temp.write(srt_content)
+    temp.close()
+
+    return send_file(temp.name, as_attachment=True, download_name='converted_from_excel.srt')
+
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
