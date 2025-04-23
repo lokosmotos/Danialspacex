@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Chinese Converter</title>
+  <meta charset="UTF-8">
+  <title>Chinese Converter | Danial Space X</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <h1>Chinese Subtitle Converter</h1>
-    <form method="post" enctype="multipart/form-data" action="/convert-chinese">
-        <input type="file" name="file" accept=".srt" required>
-        <div>
-            <p>Conversion Direction:</p>
-            <input type="radio" id="s2t" name="target" value="s2t">
-            <label for="s2t">Simplified → Traditional</label><br>
-            <input type="radio" id="t2s" name="target" value="t2s">
-            <label for="t2s">Traditional → Simplified</label><br>
-            <input type="radio" id="auto" name="target" value="auto" checked>
-            <label for="auto">Auto-detect</label>
-        </div>
-        <button type="submit">Convert</button>
-    </form>
+<body class="bg-gray-900 text-white p-10">
+  <h1 class="text-3xl font-bold mb-4">Chinese Subtitle Converter</h1>
+  <p class="mb-8 text-gray-400">Convert between Simplified and Traditional Chinese subtitles.</p>
+
+  <form method="POST" enctype="multipart/form-data">
+    <input type="file" name="subtitle_file" accept=".srt,.txt" class="mb-4 block text-white">
+    <select name="conversion_type" class="mb-4 block text-black">
+      <option value="simplified">Convert to Simplified</option>
+      <option value="traditional">Convert to Traditional</option>
+    </select>
+    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Convert</button>
+  </form>
 </body>
 </html>
