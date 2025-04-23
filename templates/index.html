@@ -6,129 +6,234 @@
   <meta name="description" content="Danial Space X - Creative tools for subtitle editing and content processing" />
   <title>Danial Space X | Creative Tools for Content Professionals</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
   <style>
+    :root {
+      --color-primary: 99, 102, 241;
+      --color-secondary: 168, 85, 247;
+    }
+    
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
       min-height: 100vh;
+      color: #f3f4f6;
       overflow-x: hidden;
     }
+    
+    .gradient-text {
+      background: linear-gradient(90deg, rgba(var(--color-primary), 1), rgba(var(--color-secondary), 1));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
     .tool-card {
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       transform: translateY(0);
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(12px);
+      background: rgba(31, 41, 55, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
+    
     .tool-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+      transform: translateY(-8px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+      background: rgba(31, 41, 55, 0.8);
     }
-    .glow {
-      text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    
+    .tool-icon {
+      transition: all 0.3s ease;
     }
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: 
-        radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 25%), 
-        radial-gradient(circle at 80% 70%, rgba(124, 58, 237, 0.1) 0%, transparent 25%);
-      z-index: -1;
-      animation: float 15s ease-in-out infinite;
+    
+    .tool-card:hover .tool-icon {
+      transform: scale(1.1);
     }
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0); }
-      50% { transform: translate(-10px, -10px); }
+    
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--duration) infinite ease-in-out;
     }
-    #loader {
-      transition: opacity 0.5s ease;
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 1; }
     }
-    .animate-bounce-slow {
-      animation: bounce-slow 3s infinite;
+    
+    .floating {
+      animation: floating 6s ease-in-out infinite;
     }
-    @keyframes bounce-slow {
+    
+    @keyframes floating {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
+      50% { transform: translateY(-15px); }
+    }
+    
+    .glow {
+      box-shadow: 0 0 15px rgba(var(--color-primary), 0.4);
     }
   </style>
 </head>
 
-<body class="flex flex-col items-center">
+<body class="relative overflow-hidden">
+  <!-- Stars Background -->
+  <div id="stars-container" class="fixed inset-0 z-0"></div>
+  
   <!-- Loading Animation -->
-  <div id="loader" class="fixed inset-0 bg-gray-900 flex flex-col items-center justify-center z-50 opacity-100 transition-opacity duration-500">
-    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-    <p class="text-blue-400 font-medium">Loading Danial Space X...</p>
+  <div id="loader" class="fixed inset-0 bg-gray-900/95 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
+    <div class="relative">
+      <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <div class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
+      </div>
+    </div>
+    <p class="mt-4 text-lg font-medium text-indigo-300 animate-pulse">Launching Danial Space X...</p>
   </div>
 
   <!-- Main Content -->
-  <main class="w-full max-w-7xl px-4 py-12 flex flex-col items-center">
+  <main class="relative z-10 w-full max-w-7xl px-4 py-16 sm:py-20 flex flex-col items-center">
     <!-- Header -->
-    <header class="text-center mb-12 animate-bounce-slow">
-      <h1 class="text-5xl md:text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 glow">
-        Danial Space X
-      </h1>
-      <p class="text-xl text-gray-300 max-w-2xl">
-        Powerful tools for subtitle editing, content processing, and media professionals
+    <header class="text-center mb-16 sm:mb-20">
+      <div class="relative inline-block">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold mb-4 gradient-text animate__animated animate__fadeInDown">
+          Danial Space X
+        </h1>
+        <div class="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
+      </div>
+      <p class="text-xl sm:text-2xl text-gray-300 max-w-2xl mt-6 animate__animated animate__fadeIn animate__delay-1s">
+        Advanced tools for professional subtitle editing and content processing
       </p>
     </header>
 
     <!-- Tools Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl mb-12">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl mb-16">
       <!-- CC Remover -->
-      <a href="/cc-remover" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
-        <div class="bg-blue-500/20 p-3 rounded-full mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <a href="/cc-remover" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
+        <div class="bg-indigo-500/20 p-4 rounded-2xl mb-6 tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h3 class="text-xl font-semibold mb-2">CC Remover</h3>
-        <p class="text-gray-400 text-center">Clean your SRT files by removing closed captions and formatting tags</p>
+        <h3 class="text-xl font-semibold mb-3 text-center">CC Remover</h3>
+        <p class="text-gray-400 text-center text-sm leading-relaxed">
+          Automatically clean SRT files by removing closed captions and formatting tags with precision
+        </p>
+        <span class="mt-4 px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-medium rounded-full">Popular</span>
       </a>
 
       <!-- Format Converter -->
-      <a href="/converter" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
-        <div class="bg-green-500/20 p-3 rounded-full mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <a href="/converter" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
+        <div class="bg-emerald-500/20 p-4 rounded-2xl mb-6 tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h3 class="text-xl font-semibold mb-2">Format Converter</h3>
-        <p class="text-gray-400 text-center">Convert between Excel, CSV, SRT, and VTT formats with ease</p>
+        <h3 class="text-xl font-semibold mb-3 text-center">Format Converter</h3>
+        <p class="text-gray-400 text-center text-sm leading-relaxed">
+          Seamlessly convert between Excel, CSV, SRT, and VTT formats with batch processing
+        </p>
+        <span class="mt-4 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-full">New</span>
       </a>
 
       <!-- Profanity Checker -->
-      <a href="/profanity-checker" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
-        <div class="bg-red-500/20 p-3 rounded-full mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <a href="/profanity-checker" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
+        <div class="bg-rose-500/20 p-4 rounded-2xl mb-6 tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 class="text-xl font-semibold mb-2">Content Analyzer</h3>
-        <p class="text-gray-400 text-center">Check for profanity, sensitive content, and readability metrics</p>
+        <h3 class="text-xl font-semibold mb-3 text-center">Content Analyzer</h3>
+        <p class="text-gray-400 text-center text-sm leading-relaxed">
+          Advanced detection of profanity, sensitive content with customizable filters
+        </p>
+        <span class="mt-4 px-3 py-1 bg-rose-500/20 text-rose-400 text-xs font-medium rounded-full">AI-Powered</span>
       </a>
 
       <!-- Chinese Converter -->
-      <a href="/chinese-converter" class="tool-card bg-gray-800/80 hover:bg-gray-700/80 rounded-xl p-6 shadow-lg border border-gray-700/50 flex flex-col items-center">
-        <div class="bg-yellow-500/20 p-3 rounded-full mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <a href="/chinese-converter" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
+        <div class="bg-amber-500/20 p-4 rounded-2xl mb-6 tool-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21V3m4 14h7m-3-4v8" />
           </svg>
         </div>
-        <h3 class="text-xl font-semibold mb-2">Chinese Converter</h3>
-        <p class="text-gray-400 text-center">Convert between Simplified and Traditional Chinese subtitles</p>
+        <h3 class="text-xl font-semibold mb-3 text-center">Chinese Converter</h3>
+        <p class="text-gray-400 text-center text-sm leading-relaxed">
+          Intelligent conversion between Simplified and Traditional Chinese with 98% accuracy
+        </p>
+        <span class="mt-4 px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full">Beta</span>
       </a>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="w-full max-w-3xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl p-8 sm:p-10 border border-indigo-500/30 mt-8 text-center animate__animated animate__fadeIn animate__delay-2s">
+      <h2 class="text-2xl sm:text-3xl font-bold mb-4">Ready to boost your productivity?</h2>
+      <p class="text-gray-300 mb-6 max-w-2xl mx-auto">
+        Join thousands of professionals who trust Danial Space X for their subtitle and content processing needs.
+      </p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <a href="/converter" class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity shadow-lg glow">
+          Get Started Now
+        </a>
+        <a href="#features" class="px-6 py-3 bg-gray-700/50 text-gray-200 font-medium rounded-lg hover:bg-gray-700/70 transition-colors border border-gray-600">
+          Learn More
+        </a>
+      </div>
     </div>
   </main>
 
+  <!-- Floating Particles -->
+  <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-900 to-transparent z-20"></div>
+
   <script>
-    window.addEventListener("load", () => {
-      const loader = document.getElementById("loader");
-      loader.style.opacity = "0";
-      setTimeout(() => loader.style.display = "none", 500);
+    // Create stars background
+    function createStars() {
+      const container = document.getElementById('stars-container');
+      const count = 100;
+      
+      for (let i = 0; i < count; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        
+        // Random properties
+        const size = Math.random() * 2;
+        const posX = Math.random() * 100;
+        const posY = Math.random() * 100;
+        const duration = 3 + Math.random() * 10;
+        const delay = Math.random() * 5;
+        
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        star.style.left = `${posX}%`;
+        star.style.top = `${posY}%`;
+        star.style.setProperty('--duration', `${duration}s`);
+        star.style.animationDelay = `${delay}s`;
+        
+        container.appendChild(star);
+      }
+    }
+    
+    // Page load animation
+    window.addEventListener('load', () => {
+      createStars();
+      
+      setTimeout(() => {
+        const loader = document.getElementById('loader');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+      }, 1000);
+    });
+    
+    // Parallax effect for stars
+    window.addEventListener('mousemove', (e) => {
+      const stars = document.getElementById('stars-container');
+      const x = e.clientX / window.innerWidth;
+      const y = e.clientY / window.innerHeight;
+      
+      stars.style.transform = `translate(-${x * 20}px, -${y * 20}px)`;
     });
   </script>
 </body>
