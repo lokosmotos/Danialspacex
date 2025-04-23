@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ZHT ⇄ ZHS Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+        .diff-box { background: #f9f9f9; border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+        .highlight { color: red; }
+    </style>
+</head>
+<body>
+    <h2>Traditional ⇄ Simplified Chinese Converter</h2>
+
+    <form id="convert-form">
+        <label for="text">Enter Chinese Text:</label>
+        <textarea id="text" name="text" required></textarea>
+
+        <div>
+            <input type="radio" id="s2t" name="direction" value="s2t" checked>
+            <label for="s2t">Simplified → Traditional</label>
+
+            <input type="radio" id="t2s" name="direction" value="t2s">
+            <label for="t2s">Traditional → Simplified</label>
+        </div>
+
+        <button type="submit">Convert</button>
+    </form>
+
+    <div id="result" style="display:none;">
+        <h3>Converted Output:</h3>
+        <textarea id="converted-output" readonly></textarea>
+
+        <form method="POST" action="/download-converted">
+            <input type="hidden" id="converted" name="converted">
+            <button type="submit">Download Converted Text</button>
+        </form>
+
+        <div class="diff-box" id="diffs">
+            <h4>Differences:</h4>
+            <ul id="diff-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('convert-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const text = document.getElementById('text').value;
+            const direction = document.querySelector('input[name="direction"]:checked').value;
+
+            const response = await fetch('/api/convert-chinese', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ text, direction })
+            });
+
+            const data = await response.json();
+            document.getElementById('converted-output').value = data.converted;
+            document.getElementById('converted').value = JSON.stringify(data.converted);
+
+            const diffList = document.getElementById('diff-list');
+            diffList.innerHTML = '';
+            data.diffs.forEach(([original,
