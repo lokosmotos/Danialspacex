@@ -33,7 +33,27 @@ def zht_zhs_converter():
 @app.route('/chinese-converter')
 def chinese_converter():
     return render_template('chinese_converter.html')
+@app.route('/upload-chinese-srt', methods=['POST'])
+def upload_chinese_srt():
+    file = request.files.get('srtfile')
+    if not file or not file.filename.endswith('.srt'):
+        return redirect('/chinese-converter')
 
+    content = file.read().decode('utf-8', errors='ignore')
+
+    # Detect language
+    variant = detect_chinese_variant(content)
+    direction = 's2t' if variant == 'zhs' else 't2s'
+
+    # Convert and diff
+    converted_text, diffs = convert_chinese_variant(content, direction)
+
+    return render_template('converted_chinese_result.html', 
+                           original=content, 
+                           converted=converted_text, 
+                           diffs=diffs,
+                           direction=direction,
+                           detected_variant=variant)
 
 # === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
