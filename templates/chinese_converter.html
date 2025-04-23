@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chinese Converter</title>
+</head>
+<body>
+    <h1>Chinese Subtitle Converter</h1>
+    <form method="post" enctype="multipart/form-data" action="/convert-chinese">
+        <input type="file" name="file" accept=".srt" required>
+        <div>
+            <p>Conversion Direction:</p>
+            <input type="radio" id="s2t" name="target" value="s2t">
+            <label for="s2t">Simplified → Traditional</label><br>
+            <input type="radio" id="t2s" name="target" value="t2s">
+            <label for="t2s">Traditional → Simplified</label><br>
+            <input type="radio" id="auto" name="target" value="auto" checked>
+            <label for="auto">Auto-detect</label>
+        </div>
+        <button type="submit">Convert</button>
+    </form>
+</body>
+</html>
