@@ -55,7 +55,7 @@
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Analyzer</h1>
+            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
             <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language</p>
         </div>
 
@@ -290,7 +290,7 @@
             const lines = content.split('\n');
             
             for (const line of lines) {
-                if (/^\d+$/.test(line.trim()) {
+                if (/^\d+$/.test(line.trim())) {
                     currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
                 } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
                     currentBlock.timecodes = line.trim();
