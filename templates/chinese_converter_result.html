@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversion Result</title>
+</head>
+<body>
+    <h1>Converted Chinese Text</h1>
+    <p><strong>Original Text:</strong></p>
+    <pre>{{ original_text }}</pre>
+
+    <p><strong>Converted Text:</strong></p>
+    <pre>{{ converted_text }}</pre>
+
+    {% if diffs %}
+    <h2>Differences:</h2>
+    <ul>
+        {% for original, converted in diffs %}
+        <li>
+            <strong>Original:</strong> {{ original }}<br>
+            <strong>Converted:</strong> {{ converted }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No differences found.</p>
+    {% endif %}
+</body>
+</html>
