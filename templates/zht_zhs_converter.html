@@ -2,47 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZHT ⇄ ZHS Converter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
-        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
-        .diff-box { background: #f9f9f9; border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
         .highlight { color: red; }
+        .diff-box { background: #f9f9f9; border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+        .form-check-label { margin-right: 10px; }
+        button { margin-top: 10px; }
+        #result { display: none; }
     </style>
 </head>
 <body>
-    <h2>Traditional ⇄ Simplified Chinese Converter</h2>
+    <div class="container">
+        <h2>Traditional ⇄ Simplified Chinese Converter</h2>
 
-    <form id="convert-form">
-        <label for="text">Enter Chinese Text:</label>
-        <textarea id="text" name="text" required></textarea>
+        <form id="convert-form">
+            <div class="form-group">
+                <label for="text">Enter Chinese Text:</label>
+                <textarea id="text" class="form-control" name="text" required></textarea>
+            </div>
 
-        <div>
-            <input type="radio" id="s2t" name="direction" value="s2t" checked>
-            <label for="s2t">Simplified → Traditional</label>
+            <div class="form-group form-check">
+                <input type="radio" id="s2t" name="direction" value="s2t" class="form-check-input" checked>
+                <label for="s2t" class="form-check-label">Simplified → Traditional</label>
 
-            <input type="radio" id="t2s" name="direction" value="t2s">
-            <label for="t2s">Traditional → Simplified</label>
-        </div>
+                <input type="radio" id="t2s" name="direction" value="t2s" class="form-check-input">
+                <label for="t2s" class="form-check-label">Traditional → Simplified</label>
+            </div>
 
-        <button type="submit">Convert</button>
-    </form>
-
-    <div id="result" style="display:none;">
-        <h3>Converted Output:</h3>
-        <textarea id="converted-output" readonly></textarea>
-
-        <form method="POST" action="/download-converted">
-            <input type="hidden" id="converted" name="converted">
-            <button type="submit">Download Converted Text</button>
+            <button type="submit" class="btn btn-primary">Convert</button>
         </form>
 
-        <div class="diff-box" id="diffs">
-            <h4>Differences:</h4>
-            <ul id="diff-list"></ul>
+        <div id="result">
+            <h3>Converted Output:</h3>
+            <textarea id="converted-output" class="form-control" readonly></textarea>
+
+            <form method="POST" action="/download-converted" class="mt-3">
+                <input type="hidden" id="converted" name="converted">
+                <button type="submit" class="btn btn-success">Download Converted Text</button>
+            </form>
+
+            <div class="diff-box mt-3" id="diffs">
+                <h4>Differences:</h4>
+                <ul id="diff-list"></ul>
+            </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('convert-form').addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -61,4 +72,14 @@
 
             const diffList = document.getElementById('diff-list');
             diffList.innerHTML = '';
-            data.diffs.forEach(([original,
+            data.diffs.forEach(([original, converted]) => {
+                const item = document.createElement('li');
+                item.innerHTML = `<span class="highlight">${original}</span> → ${converted}`;
+                diffList.appendChild(item);
+            });
+
+            document.getElementById('result').style.display = 'block';
+        });
+    </script>
+</body>
+</html>
