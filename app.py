@@ -189,24 +189,17 @@ def convert_chinese_variant(text, direction='s2t'):
             diffs.append((line, converted))
     return "\n".join(converted_lines), diffs
 
-@app.route('/convert-chinese-srt', methods=['POST'])
-def convert_chinese_srt():
-    file = request.files['srtfile']
-    if not file.filename.endswith('.srt'):
-        return redirect('/zht-zhs-converter')
+rom flask import Flask, render_template
 
-    content = file.read().decode('utf-8')
-    detected = detect_chinese_variant(content)
-    convert_to = 's2t' if detected == 'zhs' else 't2s'
+app = Flask(__name__)
 
-    converted, diffs = convert_chinese_variant(content, direction=convert_to)
+@app.route('/')
+def index():
+    return render_template('index.html')  # assuming your homepage is index.html
 
-    return render_template('converted_chinese_srt.html',
-                           original=content,
-                           converted=converted,
-                           diffs=diffs,
-                           detected=detected,
-                           direction=convert_to)
+@app.route('/chinese-converter')
+def chinese_converter():
+    return render_template('chinese_converter.html')
 
 @app.route('/download-converted', methods=['POST'])
 def download_converted():
