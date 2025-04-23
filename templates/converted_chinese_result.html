@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Conversion Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <div class="max-w-6xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">✅ Conversion Complete</h1>
+        <p class="mb-2 text-center text-gray-500">
+            Detected: <strong class="text-blue-600 uppercase">{{ detected_variant }}</strong> → Converted to <strong class="text-green-600 uppercase">{{ direction[-1] }}</strong>
+        </p>
+
+        <div class="grid grid-cols-2 gap-6 mt-6">
+            <div>
+                <h2 class="text-lg font-semibold mb-2">Original SRT</h2>
+                <div class="p-4 border rounded h-96 overflow-y-scroll bg-gray-50 text-sm whitespace-pre-wrap">
+                    {{ original }}
+                </div>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold mb-2">Converted SRT</h2>
+                <div class="p-4 border rounded h-96 overflow-y-scroll bg-green-50 text-sm whitespace-pre-wrap">
+                    {{ converted }}
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="/download-converted" class="mt-6 text-center">
+            <input type="hidden" name="converted" value="{{ converted }}">
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">📥 Download Converted SRT</button>
+        </form>
+
+        {% if diffs %}
+        <div class="mt-10">
+            <h3 class="text-lg font-semibold mb-2 text-red-600">🔍 Changed Lines</h3>
+            <div class="bg-white p-4 border rounded shadow text-sm">
+                <ul class="list-disc pl-5 space-y-1">
+                    {% for original_line, converted_line in diffs %}
+                        <li>
+                            <span class="text-gray-500">Original:</span> {{ original_line }}<br>
+                            <span class="text-green-600">Converted:</span> {{ converted_line }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
