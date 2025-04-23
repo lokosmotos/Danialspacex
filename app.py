@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, send_file
+from flask import Flask, render_template, request, redirect, send_file, jsonify
 import os
 import re
 import tempfile
@@ -193,8 +193,23 @@ def convert_chinese_variant(text, direction='s2t'):
 def download_converted():
     converted = request.form['converted']
     with tempfile.NamedTemporaryFile(delete=False, suffix='.srt', mode='w', encoding='utf-8') as temp:
-        temp.write(json.loads(converted))
+        temp.write(converted)  # Fixed issue here: no need to use json.loads
     return send_file(temp.name, as_attachment=True, download_name='converted_chinese.srt')
+
+# === NEW API ROUTE ===
+@app.route('/api/convert-chinese', methods=['POST'])
+def convert_chinese():
+    data = request.get_json()
+    text = data.get('text')
+    direction = data.get('direction', 's2t')  # Default is simplified to traditional if not provided
+
+    # Perform the conversion using OpenCC
+    converted_text, diffs = convert_chinese_variant(text, direction)
+
+    return jsonify({
+        'converted': converted_text,
+        'diffs': diffs
+    })
 
 # === RUN ===
 if __name__ == '__main__':
