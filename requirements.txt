@@ -3,4 +3,5 @@ pandas
 openpyxl
 pysrt
 langdetect
+opencc-python-reimplemented
 
