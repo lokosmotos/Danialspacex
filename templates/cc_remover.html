@@ -1,19 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Remove CC – Danial Space</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .file-upload {
+      border: 2px dashed #4b5563;
+      transition: all 0.3s ease;
+    }
+    .file-upload:hover {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.05);
+    }
+    .glow {
+      text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+    }
+    body {
+      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <h1>🧹 Remove CC from SRT</h1>
-    <form action="/remove-cc" method="post" enctype="multipart/form-data">
-      <input type="file" name="srtfile" accept=".srt" required><br><br>
-      <button type="submit">Clean SRT</button>
+<body class="min-h-screen flex items-center justify-center text-gray-100">
+  <div class="max-w-md w-full bg-gray-800 rounded-xl shadow-lg p-8 mx-4">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 glow">
+        🧹 Remove Closed Captions
+      </h1>
+      <p class="text-gray-400">Upload your SRT file to clean CC tags and formatting</p>
+    </div>
+
+    <!-- Upload Form -->
+    <form action="/remove-cc" method="post" enctype="multipart/form-data" class="space-y-6">
+      <div class="file-upload rounded-lg p-8 text-center cursor-pointer">
+        <input type="file" name="srtfile" id="fileInput" accept=".srt" required class="hidden">
+        <label for="fileInput" class="cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <h3 class="text-lg font-medium">Click to upload SRT file</h3>
+          <p class="text-sm text-gray-400 mt-1">Only .srt files supported</p>
+          <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm"></p>
+        </label>
+      </div>
+      
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+        Clean SRT File
+      </button>
     </form>
-    <br>
-    <a href="/">⬅ Back to Home</a>
+
+    <!-- Back Link -->
+    <div class="mt-6 text-center">
+      <a href="/" class="text-blue-400 hover:text-blue-300 inline-flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Home
+      </a>
+    </div>
   </div>
+
+  <script>
+    // Show selected filename
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name || 'No file selected';
+      document.getElementById('fileName').textContent = fileName;
+    });
+  </script>
 </body>
 </html>
