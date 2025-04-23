@@ -194,27 +194,43 @@ def convert_chinese_variant(text, direction='s2t'):
             diffs.append((line, converted))
     return "\n".join(converted_lines), diffs
 
-@app.route('/download-converted', methods=['POST'])
-def download_converted():
-    converted = request.form['converted']
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.srt', mode='w', encoding='utf-8') as temp:
-        temp.write(converted)  # Fixed issue here: no need to use json.loads
-    return send_file(temp.name, as_attachment=True, download_name='converted_chinese.srt')
+# 🟢 NEW HTML-FORM-FRIENDLY ROUTE
+@app.route('/convert-chinese', methods=['POST'])
+def convert_chinese_form():
+    text = request.form.get('chinese_text')
+    direction = request.form.get('direction', 's2t')
 
-# === NEW API ROUTE ===
+    if not text:
+        return "No text provided", 400
+
+    converted_text, diffs = convert_chinese_variant(text, direction)
+
+    return render_template('chinese_converter_result.html',
+                           original_text=text,
+                           converted_text=converted_text,
+                           diffs=diffs)
+
+# 🟢 JSON API (for fetch/XHR/AJAX)
 @app.route('/api/convert-chinese', methods=['POST'])
-def convert_chinese():
+def convert_chinese_api():
     data = request.get_json()
     text = data.get('text')
-    direction = data.get('direction', 's2t')  # Default is simplified to traditional if not provided
+    direction = data.get('direction', 's2t')
 
-    # Perform the conversion using OpenCC
     converted_text, diffs = convert_chinese_variant(text, direction)
 
     return jsonify({
         'converted': converted_text,
         'diffs': diffs
     })
+
+@app.route('/download-converted', methods=['POST'])
+def download_converted():
+    converted = request.form['converted']
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.srt', mode='w', encoding='utf-8') as temp:
+        temp.write(converted)
+    return send_file(temp.name, as_attachment=True, download_name='converted_chinese.srt')
+
 
 # === RUN ===
 if __name__ == '__main__':
