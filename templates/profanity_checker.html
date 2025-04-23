@@ -274,9 +274,20 @@
             blocks.forEach(block => {
                 const profanities = findProfanities(block.text, combinedWords);
                 if (profanities.length > 0) {
+                    // Sort by index in descending order to avoid replacement conflicts
+                    profanities.sort((a, b) => b.index - a.index);
+                    
+                    let modifiedText = block.text;
+                    profanities.forEach(p => {
+                        modifiedText = modifiedText.substring(0, p.index) + 
+                                      '[CENSORED]' + 
+                                      modifiedText.substring(p.index + p.length);
+                    });
+                    
                     state.detectedProfanities.push({
                         blockNumber: block.number,
                         text: block.text,
+                        modifiedText: modifiedText,
                         profanities: profanities,
                         severity: determineSeverity(profanities)
                     });
@@ -308,100 +319,26 @@
         }
 
         function findProfanities(text, wordList) {
-    const found = [];
-    wordList.forEach(word => {
-        // Use word boundaries to match whole words only
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            found.push({
-                word: match[0],
-                index: match.index,
-                length: match[0].length
+            const found = [];
+            wordList.forEach(word => {
+                // Use word boundaries to match whole words only
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    found.push({
+                        word: match[0],
+                        index: match.index,
+                        length: match[0].length
+                    });
+                }
             });
+            return found;
         }
-    });
-    return found;
-}
 
-function processSRTContent() {
-    const combinedWords = getCombinedWordList();
-    const blocks = parseSRT(state.originalContent);
-    state.detectedProfanities = [];
-    
-    blocks.forEach(block => {
-        const profanities = findProfanities(block.text, combinedWords);
-        if (profanities.length > 0) {
-            // Sort by index in descending order to avoid replacement conflicts
-            profanities.sort((a, b) => b.index - a.index);
-            
-            let modifiedText = block.text;
-            profanities.forEach(p => {
-                modifiedText = modifiedText.substring(0, p.index) + 
-                              '[CENSORED]' + 
-                              modifiedText.substring(p.index + p.length);
-            });
-            
-            state.detectedProfanities.push({
-                blockNumber: block.number,
-                text: block.text,
-                modifiedText: modifiedText,
-                profanities: profanities,
-                severity: determineSeverity(profanities)
-            });
+        function determineSeverity(profanities) {
+            // Simple severity determination - can be enhanced
+            return 'high';
         }
-    });
-}
-
-// Update the showResults function to use modifiedText
-function showResults() {
-    elements.resultsBody.innerHTML = '';
-    state.detectedProfanities.forEach(item => {
-        const row = document.createElement('tr');
-        row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
-        
-        let highlightedText = item.text;
-        item.profanities.forEach(p => {
-            highlightedText = highlightedText.substring(0, p.index) + 
-                `<span class="profanity-highlight">${highlightedText.substring(p.index, p.index + p.length)}</span>` + 
-                highlightedText.substring(p.index + p.length);
-        });
-        
-        row.innerHTML = `
-            <td class="py-3 font-mono">${item.blockNumber}</td>
-            <td class="py-3">${highlightedText}</td>
-            <td class="py-3">
-                <input type="text" data-block="${item.blockNumber}" 
-                       value="${item.modifiedText}" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
-            </td>
-            <td class="py-3 text-center">
-                <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
-                     item.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}">
-                    ${item.severity || 'high'}
-                </span>
-            </td>
-        `;
-        elements.resultsBody.appendChild(row);
-    });
-    
-    // ... rest of showResults function
-}
-
-// Update generateCleanedSRT to use the modified text
-function generateCleanedSRT() {
-    const blocks = parseSRT(state.originalContent);
-    let output = '';
-    
-    blocks.forEach(block => {
-        const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
-        output += `${block.number}\n${block.timecodes}\n`;
-        output += `${detectedItem ? 
-                  document.querySelector(`input[data-block="${block.number}"]`).value : 
-                  block.text}\n\n`;
-    });
-    
-    return output.trim();
-}
 
         function showResults() {
             elements.resultsBody.innerHTML = '';
@@ -421,7 +358,7 @@ function generateCleanedSRT() {
                     <td class="py-3">${highlightedText}</td>
                     <td class="py-3">
                         <input type="text" data-block="${item.blockNumber}" 
-                               value="[CENSORED]" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
+                               value="${item.modifiedText}" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
                     </td>
                     <td class="py-3 text-center">
                         <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
@@ -483,19 +420,15 @@ function generateCleanedSRT() {
         }
 
         function generateCleanedSRT() {
-            const replacements = {};
-            document.querySelectorAll('.replacement-input').forEach(input => {
-                const blockNumber = input.dataset.block;
-                const replacement = input.value.trim();
-                if (replacement) replacements[blockNumber] = replacement;
-            });
-            
             const blocks = parseSRT(state.originalContent);
             let output = '';
             
             blocks.forEach(block => {
+                const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
                 output += `${block.number}\n${block.timecodes}\n`;
-                output += `${replacements[block.number] || block.text}\n\n`;
+                output += `${detectedItem ? 
+                          document.querySelector(`input[data-block="${block.number}"]`).value : 
+                          block.text}\n\n`;
             });
             
             return output.trim();
@@ -517,7 +450,9 @@ function generateCleanedSRT() {
 
         function autoReplaceAll() {
             document.querySelectorAll('.replacement-input').forEach(input => {
-                input.value = '[CENSORED]';
+                const blockNumber = input.dataset.block;
+                const detectedItem = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                input.value = detectedItem ? detectedItem.modifiedText : '[CENSORED]';
             });
         }
 
@@ -526,6 +461,38 @@ function generateCleanedSRT() {
             state.game.progress = 100;
             elements.progressBar.style.width = '100%';
             elements.progressText.textContent = '100% analyzed';
+        }
+
+        function simulateProgress(onComplete) {
+            state.game.interval = setInterval(() => {
+                state.game.progress += Math.random() * 5;
+                if (state.game.progress > 100) {
+                    state.game.progress = 100;
+                    clearInterval(state.game.interval);
+                    onComplete();
+                }
+                
+                elements.progressBar.style.width = `${state.game.progress}%`;
+                elements.progressText.textContent = `${Math.floor(state.game.progress)}% analyzed`;
+            }, 100);
+        }
+
+        function startLoadingAnimation() {
+            state.game.score = 0;
+            state.game.progress = 0;
+            elements.gameScore.textContent = `Score: ${state.game.score}`;
+            
+            elements.loadingGame.classList.remove('hidden');
+            setTimeout(() => elements.loadingGame.classList.remove('opacity-0'), 10);
+        }
+
+        function setupEventListeners() {
+            elements.fileInput.addEventListener('change', updateFileName);
+            elements.analyzeBtn.addEventListener('click', analyzeContent);
+            elements.refreshBtn.addEventListener('click', loadProfanityList);
+            elements.downloadBtn.addEventListener('click', downloadCleanedFile);
+            elements.autoReplaceBtn.addEventListener('click', autoReplaceAll);
+            elements.skipGameBtn.addEventListener('click', skipLoadingGame);
         }
 
         function showSuccessMessage(message) {
