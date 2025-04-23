@@ -6,7 +6,49 @@
     <title>SRT Profanity Checker | Danial Space</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        /* Add custom styling here */
+        .file-upload {
+            border: 2px dashed #4b5563;
+            transition: all 0.3s ease;
+        }
+        .file-upload:hover {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        .profanity-highlight {
+            background-color: rgba(239, 68, 68, 0.2);
+            padding: 0 2px;
+            border-radius: 2px;
+            position: relative;
+        }
+        .profanity-highlight::after {
+            content: "⚠";
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 10px;
+            color: #ef4444;
+        }
+        #loadingGame {
+            transition: all 0.5s ease;
+        }
+        .game-tile {
+            width: 30px;
+            height: 30px;
+            background-color: #3b82f6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .game-tile:hover {
+            transform: scale(1.1);
+            background-color: #2563eb;
+        }
+        .game-tile.active {
+            background-color: #10b981;
+        }
+        .severity-high { background-color: rgba(239, 68, 68, 0.1); }
+        .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
+        .severity-low { background-color: rgba(59, 130, 246, 0.1); }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
@@ -19,7 +61,7 @@
 
         <!-- Upload Section -->
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
-            <form id="uploadForm" class="space-y-4" enctype="multipart/form-data">
+            <form id="uploadForm" class="space-y-4">
                 <div class="file-upload rounded-lg p-8 text-center cursor-pointer">
                     <input type="file" name="file" id="fileInput" accept=".srt" required class="hidden">
                     <label for="fileInput" class="cursor-pointer">
@@ -32,10 +74,55 @@
                     </label>
                 </div>
                 
-                <button type="submit" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
+                <!-- Profanity Word List -->
+                <div class="bg-gray-700/30 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-red-400">Profanity Words to Detect</h3>
+                        <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                            ↻ Refresh List
+                        </button>
+                    </div>
+                    <div id="profanityListStatus" class="text-sm mb-2">
+                        Loading profanity list from static/profanity_list.json...
+                    </div>
+                    <div id="customProfanityContainer" class="hidden">
+                        <textarea id="customProfanityList" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-24 focus:border-blue-500 focus:outline-none text-sm" placeholder="Add additional words (comma separated)"></textarea>
+                        <p class="text-xs text-gray-400 mt-1">Additional words to detect beyond the loaded list</p>
+                    </div>
+                </div>
+                
+                <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
                     Analyze SRT Content
                 </button>
             </form>
+        </div>
+
+        <!-- Loading Game -->
+        <div id="loadingGame" class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8 hidden opacity-0 transition-opacity duration-300">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-medium text-blue-400 mb-1">⏳ Processing Your SRT File</h3>
+                <p class="text-gray-400">Analyzing subtitles for profanity...</p>
+                <div class="mt-3 h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-400 mt-1">0% analyzed</p>
+            </div>
+            
+            <div class="text-center mb-4">
+                <h4 class="font-medium mb-2">🎯 Click the Blue Tiles</h4>
+                <p id="gameScore" class="text-2xl font-bold text-green-400">Score: 0</p>
+            </div>
+            
+            <div id="gameBoard" class="grid grid-cols-5 gap-2 mb-4"></div>
+            
+            <div class="text-center">
+                <button id="skipGameBtn" class="text-sm text-gray-400 hover:text-white">
+                    Skip game and wait normally
+                </button>
+            </div>
         </div>
 
         <!-- Results Section -->
@@ -47,57 +134,411 @@
                 </span>
             </div>
             
-            <div id="resultsBody" class="overflow-x-auto"></div>
-
-            <div class="mt-6 flex gap-3">
-                <button id="downloadBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700 text-left">
+                            <th class="pb-3 font-medium">Line</th>
+                            <th class="pb-3 font-medium">Original Text</th>
+                            <th class="pb-3 font-medium">Replacement</th>
+                            <th class="pb-3 font-medium">Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
+                </table>
+            </div>
+            
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button id="downloadBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
                     Download Cleaned SRT
+                </button>
+                <button type="button" id="autoReplaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
+                    Auto-Replace All with [CENSORED]
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', function(event) {
-            event.preventDefault();
+        // ========== Configuration ==========
+        const DEFAULT_WORDS = [
+            'hell', 'damn', 'bitch', 'ass', 'fuck', 
+            'shit', 'crap', 'asshole', 'bastard', 
+            'dick', 'piss', 'cunt', 'dickhead'
+        ];
+        
+        const SEVERITY_LEVELS = {
+            high: { class: 'severity-high', default: true },
+            medium: { class: 'severity-medium' },
+            low: { class: 'severity-low' }
+        };
 
-            const fileInput = document.getElementById('fileInput');
-            const fileName = document.getElementById('fileName');
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+        // ========== State Management ==========
+        let state = {
+            profanityWords: [],
+            customWords: [],
+            detectedProfanities: [],
+            originalContent: '',
+            modifiedContent: '',
+            game: {
+                score: 0,
+                progress: 0,
+                interval: null
+            }
+        };
 
-            // Show loading state
-            document.getElementById('resultsSection').classList.add('hidden');
-            const loadingText = "Loading file...";
-            fileName.textContent = loadingText;
+        // ========== DOM Elements ==========
+        const elements = {
+            fileInput: document.getElementById('fileInput'),
+            fileName: document.getElementById('fileName'),
+            analyzeBtn: document.getElementById('analyzeBtn'),
+            refreshBtn: document.getElementById('refreshListBtn'),
+            loadingGame: document.getElementById('loadingGame'),
+            gameBoard: document.getElementById('gameBoard'),
+            progressBar: document.getElementById('progressBar'),
+            progressText: document.getElementById('progressText'),
+            gameScore: document.getElementById('gameScore'),
+            resultsSection: document.getElementById('resultsSection'),
+            resultsBody: document.getElementById('resultsBody'),
+            profanityCount: document.getElementById('profanityCount'),
+            profanityStatus: document.getElementById('profanityListStatus'),
+            customContainer: document.getElementById('customProfanityContainer'),
+            customWordsInput: document.getElementById('customProfanityList'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            autoReplaceBtn: document.getElementById('autoReplaceBtn'),
+            skipGameBtn: document.getElementById('skipGameBtn')
+        };
 
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Process response
-                if (data.detected) {
-                    const resultsBody = document.getElementById('resultsBody');
-                    const profanityCount = document.getElementById('profanityCount');
-                    profanityCount.textContent = `${data.detected.length} found`;
-
-                    resultsBody.innerHTML = data.detected.map(item => `
-                        <div class="p-4 bg-gray-700 rounded-lg mb-3">
-                            <p><strong>Detected word:</strong> ${item.word}</p>
-                            <p><strong>Position:</strong> ${item.start} to ${item.end}</p>
-                        </div>
-                    `).join('');
-
-                    document.getElementById('resultsSection').classList.remove('hidden');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('There was an error with the upload');
-            });
+        // ========== Initialization ==========
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfanityList();
+            setupEventListeners();
+            generateGameBoard();
         });
+
+        // ========== Core Functions ==========
+        async function loadProfanityList() {
+            try {
+                const response = await fetch('/static/profanity_list.json');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                if (!validateProfanityList(data)) throw new Error('Invalid JSON format');
+                
+                state.profanityWords = Array.isArray(data) ? data : data.words;
+                showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
+                
+            } catch (error) {
+                console.error('Loading failed:', error);
+                state.profanityWords = DEFAULT_WORDS;
+                showErrorMessage(`Using default list (${DEFAULT_WORDS.length} words)`);
+            }
+            
+            elements.customContainer.classList.remove('hidden');
+        }
+
+        function validateProfanityList(data) {
+            return Array.isArray(data) || (data?.words && Array.isArray(data.words));
+        }
+
+        function getCombinedWordList() {
+            const customWords = elements.customWordsInput.value
+                .split(',')
+                .map(w => w.trim())
+                .filter(w => w);
+            
+            return [...new Set([...state.profanityWords, ...customWords])];
+        }
+
+        // ========== SRT Processing ==========
+        async function analyzeContent() {
+            if (!validateFileInput()) return;
+            
+            startLoadingAnimation();
+            state.originalContent = await readFile(elements.fileInput.files[0]);
+            
+            simulateProgress(() => {
+                processSRTContent();
+                showResults();
+            });
+        }
+
+        function processSRTContent() {
+            const combinedWords = getCombinedWordList();
+            const blocks = parseSRT(state.originalContent);
+            state.detectedProfanities = [];
+            
+            blocks.forEach(block => {
+                const profanities = findProfanities(block.text, combinedWords);
+                if (profanities.length > 0) {
+                    state.detectedProfanities.push({
+                        blockNumber: block.number,
+                        text: block.text,
+                        profanities: profanities,
+                        severity: determineSeverity(profanities)
+                    });
+                }
+            });
+        }
+
+        function parseSRT(content) {
+            const blocks = [];
+            let currentBlock = null;
+            const lines = content.split('\n');
+            
+            for (const line of lines) {
+                if (/^\d+$/.test(line.trim())) {
+                    currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
+                } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
+                    currentBlock.timecodes = line.trim();
+                } else if (currentBlock) {
+                    if (line.trim() === '') {
+                        blocks.push(currentBlock);
+                        currentBlock = null;
+                    } else {
+                        currentBlock.text += (currentBlock.text ? '\n' : '') + line.trim();
+                    }
+                }
+            }
+            
+            return blocks;
+        }
+
+        function findProfanities(text, wordList) {
+    const found = [];
+    wordList.forEach(word => {
+        // Use word boundaries to match whole words only
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            found.push({
+                word: match[0],
+                index: match.index,
+                length: match[0].length
+            });
+        }
+    });
+    return found;
+}
+
+function processSRTContent() {
+    const combinedWords = getCombinedWordList();
+    const blocks = parseSRT(state.originalContent);
+    state.detectedProfanities = [];
+    
+    blocks.forEach(block => {
+        const profanities = findProfanities(block.text, combinedWords);
+        if (profanities.length > 0) {
+            // Sort by index in descending order to avoid replacement conflicts
+            profanities.sort((a, b) => b.index - a.index);
+            
+            let modifiedText = block.text;
+            profanities.forEach(p => {
+                modifiedText = modifiedText.substring(0, p.index) + 
+                              '[CENSORED]' + 
+                              modifiedText.substring(p.index + p.length);
+            });
+            
+            state.detectedProfanities.push({
+                blockNumber: block.number,
+                text: block.text,
+                modifiedText: modifiedText,
+                profanities: profanities,
+                severity: determineSeverity(profanities)
+            });
+        }
+    });
+}
+
+// Update the showResults function to use modifiedText
+function showResults() {
+    elements.resultsBody.innerHTML = '';
+    state.detectedProfanities.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
+        
+        let highlightedText = item.text;
+        item.profanities.forEach(p => {
+            highlightedText = highlightedText.substring(0, p.index) + 
+                `<span class="profanity-highlight">${highlightedText.substring(p.index, p.index + p.length)}</span>` + 
+                highlightedText.substring(p.index + p.length);
+        });
+        
+        row.innerHTML = `
+            <td class="py-3 font-mono">${item.blockNumber}</td>
+            <td class="py-3">${highlightedText}</td>
+            <td class="py-3">
+                <input type="text" data-block="${item.blockNumber}" 
+                       value="${item.modifiedText}" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
+            </td>
+            <td class="py-3 text-center">
+                <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
+                     item.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}">
+                    ${item.severity || 'high'}
+                </span>
+            </td>
+        `;
+        elements.resultsBody.appendChild(row);
+    });
+    
+    // ... rest of showResults function
+}
+
+// Update generateCleanedSRT to use the modified text
+function generateCleanedSRT() {
+    const blocks = parseSRT(state.originalContent);
+    let output = '';
+    
+    blocks.forEach(block => {
+        const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
+        output += `${block.number}\n${block.timecodes}\n`;
+        output += `${detectedItem ? 
+                  document.querySelector(`input[data-block="${block.number}"]`).value : 
+                  block.text}\n\n`;
+    });
+    
+    return output.trim();
+}
+
+        function showResults() {
+            elements.resultsBody.innerHTML = '';
+            state.detectedProfanities.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
+                
+                let highlightedText = item.text;
+                item.profanities.forEach(p => {
+                    highlightedText = highlightedText.substring(0, p.index) + 
+                        `<span class="profanity-highlight">${highlightedText.substring(p.index, p.index + p.length)}</span>` + 
+                        highlightedText.substring(p.index + p.length);
+                });
+                
+                row.innerHTML = `
+                    <td class="py-3 font-mono">${item.blockNumber}</td>
+                    <td class="py-3">${highlightedText}</td>
+                    <td class="py-3">
+                        <input type="text" data-block="${item.blockNumber}" 
+                               value="[CENSORED]" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
+                    </td>
+                    <td class="py-3 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
+                             item.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}">
+                            ${item.severity || 'high'}
+                        </span>
+                    </td>
+                `;
+                elements.resultsBody.appendChild(row);
+            });
+            
+            elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
+            elements.loadingGame.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                elements.loadingGame.classList.add('hidden');
+                elements.resultsSection.classList.remove('hidden');
+            }, 300);
+        }
+
+        function generateGameBoard() {
+            elements.gameBoard.innerHTML = '';
+            for (let i = 0; i < 25; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'game-tile';
+                tile.addEventListener('click', () => {
+                    if (!tile.classList.contains('active')) {
+                        tile.classList.add('active');
+                        state.game.score++;
+                        elements.gameScore.textContent = `Score: ${state.game.score}`;
+                    }
+                });
+                elements.gameBoard.appendChild(tile);
+            }
+        }
+
+        // ========== Utility Functions ==========
+        function validateFileInput() {
+            if (!elements.fileInput.files.length) {
+                alert('Please select an SRT file first');
+                return false;
+            }
+            
+            const combinedWords = getCombinedWordList();
+            if (combinedWords.length === 0) {
+                alert('No profanity words to detect. Please add some words to the list.');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function readFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsText(file);
+            });
+        }
+
+        function generateCleanedSRT() {
+            const replacements = {};
+            document.querySelectorAll('.replacement-input').forEach(input => {
+                const blockNumber = input.dataset.block;
+                const replacement = input.value.trim();
+                if (replacement) replacements[blockNumber] = replacement;
+            });
+            
+            const blocks = parseSRT(state.originalContent);
+            let output = '';
+            
+            blocks.forEach(block => {
+                output += `${block.number}\n${block.timecodes}\n`;
+                output += `${replacements[block.number] || block.text}\n\n`;
+            });
+            
+            return output.trim();
+        }
+
+        function downloadCleanedFile() {
+            state.modifiedContent = generateCleanedSRT();
+            const blob = new Blob([state.modifiedContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            a.href = url;
+            a.download = `censored_${elements.fileInput.files[0].name}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function autoReplaceAll() {
+            document.querySelectorAll('.replacement-input').forEach(input => {
+                input.value = '[CENSORED]';
+            });
+        }
+
+        function skipLoadingGame() {
+            clearInterval(state.game.interval);
+            state.game.progress = 100;
+            elements.progressBar.style.width = '100%';
+            elements.progressText.textContent = '100% analyzed';
+        }
+
+        function showSuccessMessage(message) {
+            elements.profanityStatus.innerHTML = `<span class="text-green-400">✓ ${message}</span>`;
+        }
+
+        function showErrorMessage(message) {
+            elements.profanityStatus.innerHTML = `<span class="text-yellow-400">⚠ ${message}</span>`;
+        }
+
+        function updateFileName() {
+            elements.fileName.textContent = elements.fileInput.files[0]?.name || 'No file selected';
+        }
     </script>
 </body>
 </html>
