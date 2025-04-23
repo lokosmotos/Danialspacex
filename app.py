@@ -5,9 +5,11 @@ import tempfile
 import json
 import pandas as pd
 from werkzeug.utils import secure_filename
+from opencc import OpenCC
 
 app = Flask(__name__)
 
+# === ROUTES ===
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -24,6 +26,11 @@ def converter():
 def profanity_checker():
     return render_template('profanity_checker.html')
 
+@app.route('/zht-zhs-converter')
+def zht_zhs_converter():
+    return render_template('zht_zhs_converter.html')
+
+# === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
 def remove_cc():
     file = request.files['srtfile']
@@ -48,6 +55,7 @@ def remove_cc():
 
     return redirect('/cc-remover')
 
+# === EXCEL ⇄ SRT CONVERTER ===
 @app.route('/convert-excel-to-srt', methods=['POST'])
 def convert_excel_to_srt():
     file = request.files['excelfile']
@@ -61,7 +69,7 @@ def convert_excel_to_srt():
         srt_output.append(f"{i+1}")
         srt_output.append(f"{row['Start Time']} --> {row['End Time']}")
         srt_output.append(f"{row['Subtitle Text']}")
-        srt_output.append("")  # Empty line between entries
+        srt_output.append("")
 
     srt_content = "\n".join(srt_output)
 
@@ -100,14 +108,14 @@ def convert_srt_to_excel():
         temp.flush()
         return send_file(temp.name, as_attachment=True, download_name='converted_from_srt.xlsx')
 
-# Profanity Checking
+# === PROFANITY CHECKER ===
 def load_profanity_list():
     with open('static/profanity_list.json', 'r') as file:
         profanity_list = json.load(file)
     return profanity_list
 
 def check_profanity(content):
-    profanity_list = load_profanity_list()  # Load the list
+    profanity_list = load_profanity_list()
     patterns = [re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE) for word in profanity_list]
 
     detected_profanities = []
@@ -122,7 +130,6 @@ def check_profanity(content):
                 })
 
     return detected_profanities
-
 
 @app.route('/check-profanity', methods=['POST'])
 def check_profanity_route():
@@ -159,6 +166,56 @@ def final_qc():
             temp.write(content)
         return send_file(temp.name, as_attachment=True, download_name='cleaned_' + original_filename)
 
+# === ZHT ⇄ ZHS CONVERTER ===
+def detect_chinese_variant(text):
+    simplified_chars = "爱边陈当发干国红黄鸡开来马内齐时体为习"
+    traditional_chars = "愛邊陳當發幹國紅黃雞開來馬內齊時體為習"
+    simp_score = sum(char in simplified_chars for char in text)
+    trad_score = sum(char in traditional_chars for char in text)
+    if simp_score > trad_score:
+        return "zhs"
+    elif trad_score > simp_score:
+        return "zht"
+    return "unknown"
+
+def convert_chinese_variant(text, direction='s2t'):
+    cc = OpenCC(direction)
+    converted_lines = []
+    diffs = []
+    for line in text.splitlines():
+        converted = cc.convert(line)
+        converted_lines.append(converted)
+        if line != converted:
+            diffs.append((line, converted))
+    return "\n".join(converted_lines), diffs
+
+@app.route('/convert-chinese-srt', methods=['POST'])
+def convert_chinese_srt():
+    file = request.files['srtfile']
+    if not file.filename.endswith('.srt'):
+        return redirect('/zht-zhs-converter')
+
+    content = file.read().decode('utf-8')
+    detected = detect_chinese_variant(content)
+    convert_to = 's2t' if detected == 'zhs' else 't2s'
+
+    converted, diffs = convert_chinese_variant(content, direction=convert_to)
+
+    return render_template('converted_chinese_srt.html',
+                           original=content,
+                           converted=converted,
+                           diffs=diffs,
+                           detected=detected,
+                           direction=convert_to)
+
+@app.route('/download-converted', methods=['POST'])
+def download_converted():
+    converted = request.form['converted']
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.srt', mode='w', encoding='utf-8') as temp:
+        temp.write(json.loads(converted))
+    return send_file(temp.name, as_attachment=True, download_name='converted_chinese.srt')
+
+# === RUN ===
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
