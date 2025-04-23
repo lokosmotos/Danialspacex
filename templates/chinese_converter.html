@@ -7,9 +7,16 @@
 </head>
 <body>
     <h1>Chinese Converter</h1>
-    <form action="/convert-chinese" method="POST" enctype="multipart/form-data">
-        <label for="chinese_text">Enter Chinese Text:</label>
+    <form action="/convert-chinese" method="POST">
+        <label for="chinese_text">Enter Chinese Text:</label><br>
         <textarea id="chinese_text" name="chinese_text" rows="4" cols="50"></textarea><br><br>
+        
+        <label for="direction">Conversion Direction:</label>
+        <select id="direction" name="direction">
+            <option value="s2t">Simplified to Traditional</option>
+            <option value="t2s">Traditional to Simplified</option>
+        </select><br><br>
+        
         <button type="submit">Convert</button>
     </form>
 </body>
