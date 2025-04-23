@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Chinese Variant</title>
+</head>
+<body>
+    <h1>Confirm Chinese Variant</h1>
+    <p>We couldn't automatically determine the Chinese variant. Please select:</p>
+    
+    <form method="post" action="/convert-chinese">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <div>
+            <h3>Sample Content:</h3>
+            <pre>{{ content_sample }}</pre>
+        </div>
+        <div>
+            <input type="radio" id="force_s2t" name="target" value="s2t">
+            <label for="force_s2t">This is Simplified Chinese (convert to Traditional)</label><br>
+            <input type="radio" id="force_t2s" name="target" value="t2s">
+            <label for="force_t2s">This is Traditional Chinese (convert to Simplified)</label>
+        </div>
+        <button type="submit">Confirm and Convert</button>
+    </form>
+</body>
+</html>
