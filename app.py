@@ -30,6 +30,11 @@ def profanity_checker():
 def zht_zhs_converter():
     return render_template('zht_zhs_converter.html')
 
+@app.route('/chinese-converter')
+def chinese_converter():
+    return render_template('chinese_converter.html')
+
+
 # === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
 def remove_cc():
