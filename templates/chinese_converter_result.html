@@ -1,25 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Converted Chinese</title>
+    <meta charset="UTF-8">
+    <title>Chinese Subtitle Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <h2>Original Text</h2>
-    <pre>{{ original_text }}</pre>
+<body class="bg-gray-100 text-gray-800 font-sans">
 
-    <h2>Converted Text</h2>
-    <form action="/download-converted" method="POST">
-        <textarea name="converted" rows="10" cols="80">{{ converted_text }}</textarea><br>
-        <button type="submit">Download SRT</button>
-    </form>
+    <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">🈷️ Chinese Subtitle Converter</h1>
+        
+        <form action="/upload-chinese-srt" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <label class="block">
+                <span class="text-gray-700 font-medium">Upload your .srt file:</span>
+                <input type="file" name="srtfile" accept=".srt" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+            </label>
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Convert Automatically</button>
+        </form>
+    </div>
 
-    {% if diffs %}
-    <h3>Changes:</h3>
-    <ul>
-        {% for original, converted in diffs %}
-        <li><strong>{{ original }}</strong> → {{ converted }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 </body>
 </html>
