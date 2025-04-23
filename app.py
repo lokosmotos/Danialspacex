@@ -189,18 +189,6 @@ def convert_chinese_variant(text, direction='s2t'):
             diffs.append((line, converted))
     return "\n".join(converted_lines), diffs
 
-rom flask import Flask, render_template
-
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return render_template('index.html')  # assuming your homepage is index.html
-
-@app.route('/chinese-converter')
-def chinese_converter():
-    return render_template('chinese_converter.html')
-
 @app.route('/download-converted', methods=['POST'])
 def download_converted():
     converted = request.form['converted']
