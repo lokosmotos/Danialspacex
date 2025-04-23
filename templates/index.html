@@ -1,239 +1,246 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Danial Space X - Creative tools for subtitle editing and content processing" />
-  <title>Danial Space X | Creative Tools for Content Professionals</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danial Space X | Subtitle Tools Suite</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
   <style>
     :root {
-      --color-primary: 99, 102, 241;
-      --color-secondary: 168, 85, 247;
+      --netflix-red: #e50914;
+      --netflix-dark: #141414;
+      --netflix-light: #f3f3f3;
     }
     
     body {
       font-family: 'Inter', sans-serif;
-      background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
-      min-height: 100vh;
-      color: #f3f4f6;
+      background-color: var(--netflix-dark);
+      color: var(--netflix-light);
       overflow-x: hidden;
     }
     
-    .gradient-text {
-      background: linear-gradient(90deg, rgba(var(--color-primary), 1), rgba(var(--color-secondary), 1));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+    .navbar {
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 10%, rgba(0,0,0,0));
+    }
+    
+    .hero {
+      background: linear-gradient(to top, var(--netflix-dark) 0%, transparent 50%), 
+                  linear-gradient(to bottom, var(--netflix-dark) 0%, transparent 50%),
+                  url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=1352&q=80');
+      background-size: cover;
+      background-position: center;
+      height: 70vh;
+      min-height: 500px;
     }
     
     .tool-card {
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      transform: translateY(0);
-      backdrop-filter: blur(12px);
-      background: rgba(31, 41, 55, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      transform: scale(1);
     }
     
     .tool-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
-      background: rgba(31, 41, 55, 0.8);
+      transform: scale(1.05);
+      z-index: 10;
     }
     
-    .tool-icon {
-      transition: all 0.3s ease;
-    }
-    
-    .tool-card:hover .tool-icon {
-      transform: scale(1.1);
-    }
-    
-    .star {
+    .tool-card::after {
+      content: '';
       position: absolute;
-      background: white;
-      border-radius: 50%;
-      animation: twinkle var(--duration) infinite ease-in-out;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
     }
     
-    @keyframes twinkle {
-      0%, 100% { opacity: 0.2; }
-      50% { opacity: 1; }
+    .tool-card:hover::after {
+      opacity: 1;
     }
     
-    .floating {
-      animation: floating 6s ease-in-out infinite;
+    .row-title {
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     }
     
-    @keyframes floating {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-15px); }
+    .play-button {
+      background-color: var(--netflix-red);
+      transition: all 0.2s ease;
     }
     
-    .glow {
-      box-shadow: 0 0 15px rgba(var(--color-primary), 0.4);
+    .play-button:hover {
+      background-color: #f40612;
+      transform: scale(1.05);
     }
   </style>
 </head>
-
-<body class="relative overflow-hidden">
-  <!-- Stars Background -->
-  <div id="stars-container" class="fixed inset-0 z-0"></div>
-  
-  <!-- Loading Animation -->
-  <div id="loader" class="fixed inset-0 bg-gray-900/95 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
-    <div class="relative">
-      <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      <div class="absolute inset-0 flex items-center justify-center">
-        <div class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse"></div>
+<body>
+  <!-- Netflix-style Navigation -->
+  <nav class="navbar fixed top-0 w-full z-50 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center">
+      <span class="text-2xl font-bold text-red-600 mr-10">DANIAL SPACE X</span>
+      <div class="hidden md:flex space-x-6">
+        <a href="#" class="text-white hover:text-gray-300">Home</a>
+        <a href="#" class="text-white hover:text-gray-300">Tools</a>
+        <a href="#" class="text-white hover:text-gray-300">Features</a>
+        <a href="#" class="text-white hover:text-gray-300">My List</a>
       </div>
     </div>
-    <p class="mt-4 text-lg font-medium text-indigo-300 animate-pulse">Launching Danial Space X...</p>
+    <div class="flex items-center space-x-4">
+      <button class="text-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
+      <div class="w-8 h-8 rounded bg-gray-600"></div>
+    </div>
+  </nav>
+
+  <!-- Hero Banner -->
+  <section class="hero flex items-end pb-16 pt-32 px-4 md:px-16">
+    <div class="max-w-3xl">
+      <h1 class="text-4xl md:text-6xl font-bold mb-4">Professional Subtitle Tools</h1>
+      <p class="text-lg md:text-xl mb-6">The most advanced subtitle processing suite for media professionals</p>
+      <div class="flex space-x-4">
+        <button class="play-button px-6 py-2 rounded flex items-center text-white font-bold">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+          </svg>
+          Get Started
+        </button>
+        <button class="bg-gray-600 bg-opacity-70 px-6 py-2 rounded flex items-center text-white font-bold">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          More Info
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tools Rows -->
+  <div class="relative z-10 mt-8 px-4 md:px-16 pb-16">
+    <!-- Popular Tools -->
+    <section class="mb-10">
+      <h2 class="row-title text-xl md:text-2xl font-bold mb-4">Popular Tools</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- CC Remover -->
+        <a href="/cc-remover" class="tool-card relative rounded-md overflow-hidden aspect-video bg-gray-800 flex items-end p-4">
+          <div class="relative z-10">
+            <h3 class="font-bold">CC Remover</h3>
+            <p class="text-sm text-gray-300">Clean subtitle files</p>
+          </div>
+          <div class="absolute top-2 right-2 bg-red-600 text-xs px-2 py-1 rounded">HOT</div>
+        </a>
+        
+        <!-- Format Converter -->
+        <a href="/converter" class="tool-card relative rounded-md overflow-hidden aspect-video bg-gray-800 flex items-end p-4">
+          <div class="relative z-10">
+            <h3 class="font-bold">Format Converter</h3>
+            <p class="text-sm text-gray-300">Convert between formats</p>
+          </div>
+        </a>
+        
+        <!-- Content Analyzer -->
+        <a href="/profanity-checker" class="tool-card relative rounded-md overflow-hidden aspect-video bg-gray-800 flex items-end p-4">
+          <div class="relative z-10">
+            <h3 class="font-bold">Content Analyzer</h3>
+            <p class="text-sm text-gray-300">Detect sensitive content</p>
+          </div>
+          <div class="absolute top-2 right-2 bg-blue-600 text-xs px-2 py-1 rounded">NEW</div>
+        </a>
+        
+        <!-- Chinese Converter -->
+        <a href="/chinese-converter" class="tool-card relative rounded-md overflow-hidden aspect-video bg-gray-800 flex items-end p-4">
+          <div class="relative z-10">
+            <h3 class="font-bold">Chinese Converter</h3>
+            <p class="text-sm text-gray-300">ZHT ↔ ZHS</p>
+          </div>
+        </a>
+        
+        <!-- More tool cards can be added here -->
+      </div>
+    </section>
+
+    <!-- Recently Added -->
+    <section class="mb-10">
+      <h2 class="row-title text-xl md:text-2xl font-bold mb-4">Recently Added</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Add your newer tools here with "NEW" badges -->
+      </div>
+    </section>
+
+    <!-- My List -->
+    <section class="mb-10">
+      <h2 class="row-title text-xl md:text-2xl font-bold mb-4">My Frequently Used</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <!-- Add user's favorite tools here -->
+      </div>
+    </section>
   </div>
 
-  <!-- Main Content -->
-  <main class="relative z-10 w-full max-w-7xl px-4 py-16 sm:py-20 flex flex-col items-center">
-    <!-- Header -->
-    <header class="text-center mb-16 sm:mb-20">
-      <div class="relative inline-block">
-        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold mb-4 gradient-text animate__animated animate__fadeInDown">
-          Danial Space X
-        </h1>
-        <div class="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></div>
+  <!-- Footer -->
+  <footer class="bg-black text-gray-400 py-8 px-4 md:px-16">
+    <div class="max-w-6xl mx-auto">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-white mb-4">Company</h3>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white">About Us</a></li>
+            <li><a href="#" class="hover:text-white">Jobs</a></li>
+            <li><a href="#" class="hover:text-white">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-white mb-4">Features</h3>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white">All Tools</a></li>
+            <li><a href="#" class="hover:text-white">API Access</a></li>
+            <li><a href="#" class="hover:text-white">Batch Processing</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-white mb-4">Legal</h3>
+          <ul class="space-y-2">
+            <li><a href="#" class="hover:text-white">Privacy</a></li>
+            <li><a href="#" class="hover:text-white">Terms</a></li>
+            <li><a href="#" class="hover:text-white">Cookie Preferences</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-white mb-4">Connect</h3>
+          <div class="flex space-x-4">
+            <a href="#" class="hover:text-white">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd"></path>
+              </svg>
+            </a>
+            <a href="#" class="hover:text-white">
+              <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path>
+              </svg>
+            </a>
+          </div>
+        </div>
       </div>
-      <p class="text-xl sm:text-2xl text-gray-300 max-w-2xl mt-6 animate__animated animate__fadeIn animate__delay-1s">
-        Advanced tools for professional subtitle editing and content processing
-      </p>
-    </header>
-
-    <!-- Tools Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full max-w-6xl mb-16">
-      <!-- CC Remover -->
-      <a href="/cc-remover" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="bg-indigo-500/20 p-4 rounded-2xl mb-6 tool-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </div>
-        <h3 class="text-xl font-semibold mb-3 text-center">CC Remover</h3>
-        <p class="text-gray-400 text-center text-sm leading-relaxed">
-          Automatically clean SRT files by removing closed captions and formatting tags with precision
-        </p>
-        <span class="mt-4 px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-medium rounded-full">Popular</span>
-      </a>
-
-      <!-- Format Converter -->
-      <a href="/converter" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="bg-emerald-500/20 p-4 rounded-2xl mb-6 tool-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <h3 class="text-xl font-semibold mb-3 text-center">Format Converter</h3>
-        <p class="text-gray-400 text-center text-sm leading-relaxed">
-          Seamlessly convert between Excel, CSV, SRT, and VTT formats with batch processing
-        </p>
-        <span class="mt-4 px-3 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-full">New</span>
-      </a>
-
-      <!-- Profanity Checker -->
-      <a href="/profanity-checker" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="bg-rose-500/20 p-4 rounded-2xl mb-6 tool-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <h3 class="text-xl font-semibold mb-3 text-center">Content Analyzer</h3>
-        <p class="text-gray-400 text-center text-sm leading-relaxed">
-          Advanced detection of profanity, sensitive content with customizable filters
-        </p>
-        <span class="mt-4 px-3 py-1 bg-rose-500/20 text-rose-400 text-xs font-medium rounded-full">AI-Powered</span>
-      </a>
-
-      <!-- Chinese Converter -->
-      <a href="/chinese-converter" class="tool-card rounded-2xl p-8 flex flex-col items-center animate__animated animate__fadeInUp animate__delay-1s">
-        <div class="bg-amber-500/20 p-4 rounded-2xl mb-6 tool-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21V3m4 14h7m-3-4v8" />
-          </svg>
-        </div>
-        <h3 class="text-xl font-semibold mb-3 text-center">Chinese Converter</h3>
-        <p class="text-gray-400 text-center text-sm leading-relaxed">
-          Intelligent conversion between Simplified and Traditional Chinese with 98% accuracy
-        </p>
-        <span class="mt-4 px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full">Beta</span>
-      </a>
-    </div>
-
-    <!-- CTA Section -->
-    <div class="w-full max-w-3xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl p-8 sm:p-10 border border-indigo-500/30 mt-8 text-center animate__animated animate__fadeIn animate__delay-2s">
-      <h2 class="text-2xl sm:text-3xl font-bold mb-4">Ready to boost your productivity?</h2>
-      <p class="text-gray-300 mb-6 max-w-2xl mx-auto">
-        Join thousands of professionals who trust Danial Space X for their subtitle and content processing needs.
-      </p>
-      <div class="flex flex-col sm:flex-row justify-center gap-4">
-        <a href="/converter" class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-lg hover:opacity-90 transition-opacity shadow-lg glow">
-          Get Started Now
-        </a>
-        <a href="#features" class="px-6 py-3 bg-gray-700/50 text-gray-200 font-medium rounded-lg hover:bg-gray-700/70 transition-colors border border-gray-600">
-          Learn More
-        </a>
+      <div class="border-t border-gray-800 mt-8 pt-8 text-sm">
+        <p>© 2023 Danial Space X. All rights reserved.</p>
       </div>
     </div>
-  </main>
-
-  <!-- Floating Particles -->
-  <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-900 to-transparent z-20"></div>
+  </footer>
 
   <script>
-    // Create stars background
-    function createStars() {
-      const container = document.getElementById('stars-container');
-      const count = 100;
-      
-      for (let i = 0; i < count; i++) {
-        const star = document.createElement('div');
-        star.className = 'star';
-        
-        // Random properties
-        const size = Math.random() * 2;
-        const posX = Math.random() * 100;
-        const posY = Math.random() * 100;
-        const duration = 3 + Math.random() * 10;
-        const delay = Math.random() * 5;
-        
-        star.style.width = `${size}px`;
-        star.style.height = `${size}px`;
-        star.style.left = `${posX}%`;
-        star.style.top = `${posY}%`;
-        star.style.setProperty('--duration', `${duration}s`);
-        star.style.animationDelay = `${delay}s`;
-        
-        container.appendChild(star);
-      }
-    }
-    
-    // Page load animation
-    window.addEventListener('load', () => {
-      createStars();
-      
-      setTimeout(() => {
-        const loader = document.getElementById('loader');
-        loader.style.opacity = '0';
-        setTimeout(() => loader.style.display = 'none', 500);
-      }, 1000);
-    });
-    
-    // Parallax effect for stars
-    window.addEventListener('mousemove', (e) => {
-      const stars = document.getElementById('stars-container');
-      const x = e.clientX / window.innerWidth;
-      const y = e.clientY / window.innerHeight;
-      
-      stars.style.transform = `translate(-${x * 20}px, -${y * 20}px)`;
+    // Netflix-style hover effect for tool cards
+    document.querySelectorAll('.tool-card').forEach(card => {
+      card.addEventListener('mouseover', () => {
+        card.style.transform = 'scale(1.05)';
+        card.style.zIndex = '10';
+      });
+      card.addEventListener('mouseout', () => {
+        card.style.transform = 'scale(1)';
+        card.style.zIndex = '1';
+      });
     });
   </script>
 </body>
