@@ -2,83 +2,328 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Excel ⇄ SRT Converter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel ⇄ SRT Converter | Advanced Subtitle Tool</title>
   <style>
+    :root {
+      --primary: #0bf;
+      --primary-dark: #09a;
+      --bg: #111;
+      --card-bg: #222;
+      --text: #fff;
+      --text-muted: #aaa;
+      --border: #444;
+      --error: #f55;
+      --success: #5f5;
+    }
     body {
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    header {
       text-align: center;
-      padding: 2em;
+      margin-bottom: 2.5rem;
+      position: relative;
     }
-    .section {
-      margin-bottom: 3em;
+    h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      background: linear-gradient(45deg, var(--primary), #0f0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
     }
-    .instructions {
-      background: #222;
-      color: #eee;
-      border: 1px solid #444;
-      padding: 1.5em;
-      margin-top: 2em;
-      text-align: left;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      border-radius: 10px;
+    .tagline {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
     }
-    .instructions code {
-      background: #333;
-      padding: 2px 5px;
-      border-radius: 4px;
-      color: #0f0;
+    .converter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 3rem;
     }
-    .instructions a {
-      color: #0bf;
-      text-decoration: none;
-      font-weight: bold;
+    @media (max-width: 768px) {
+      .converter-grid {
+        grid-template-columns: 1fr;
+      }
     }
-    button {
-      padding: 0.5em 1em;
-      background: #0bf;
-      border: none;
-      color: #000;
-      font-weight: bold;
-      border-radius: 5px;
+    .converter-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s ease;
+    }
+    .converter-card:hover {
+      transform: translateY(-5px);
+    }
+    .converter-card h2 {
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary);
+    }
+    .file-upload {
+      margin: 1.5rem 0;
+      position: relative;
+    }
+    .file-upload input {
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
       cursor: pointer;
     }
-    input[type="file"] {
-      margin-top: 1em;
+    .file-upload-label {
+      display: block;
+      padding: 1.5rem;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .file-upload-label:hover {
+      border-color: var(--primary);
+      background: rgba(0, 187, 255, 0.05);
+    }
+    .file-upload-label i {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      display: block;
+      color: var(--primary);
+    }
+    .file-name {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    button {
+      background: var(--primary);
+      color: #000;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      background: var(--border);
+      cursor: not-allowed;
+      transform: none;
+    }
+    .instructions {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .instructions h3 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+    .instructions ul {
+      padding-left: 1.2rem;
+    }
+    .instructions li {
+      margin-bottom: 0.5rem;
+    }
+    code {
+      background: rgba(0, 187, 255, 0.2);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: monospace;
+      color: var(--success);
+    }
+    .download-template {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 187, 255, 0.1);
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      color: var(--primary);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: fit-content;
+    }
+    .download-template:hover {
+      background: rgba(0, 187, 255, 0.2);
+    }
+    .status-message {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      display: none;
+    }
+    .error {
+      background: rgba(255, 85, 85, 0.1);
+      border: 1px solid var(--error);
+      color: var(--error);
+      display: block;
+    }
+    .success {
+      background: rgba(85, 255, 85, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      display: block;
+    }
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      border-top-color: #000;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-  <h1>🧩 Excel ⇄ SRT Converter</h1>
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-exchange-alt"></i> Excel ⇄ SRT Converter</h1>
+      <p class="tagline">Professional subtitle conversion tool for translators and video editors</p>
+    </header>
 
-  <div class="section">
-    <h2>📥 Excel to SRT</h2>
-    <form action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
-      <input type="file" name="excelfile" required><br><br>
-      <button type="submit">Convert & Download SRT</button>
-    </form>
+    <div class="converter-grid">
+      <div class="converter-card">
+        <h2><i class="fas fa-file-excel"></i> Excel to SRT</h2>
+        <form id="excelToSrtForm" action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
+          <div class="file-upload">
+            <input type="file" name="excelfile" id="excelfile" accept=".xlsx,.xls" required>
+            <label for="excelfile" class="file-upload-label">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>Choose Excel File</span>
+              <div class="file-name" id="excelFileName">No file selected</div>
+            </label>
+          </div>
+          <div class="status-message" id="excelStatus"></div>
+          <button type="submit" id="excelSubmitBtn">
+            <span>Convert & Download SRT</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="converter-card">
+        <h2><i class="fas fa-file-alt"></i> SRT to Excel</h2>
+        <form id="srtToExcelForm" action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
+          <div class="file-upload">
+            <input type="file" name="srtfile" id="srtfile" accept=".srt" required>
+            <label for="srtfile" class="file-upload-label">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span>Choose SRT File</span>
+              <div class="file-name" id="srtFileName">No file selected</div>
+            </label>
+          </div>
+          <div class="status-message" id="srtStatus"></div>
+          <button type="submit" id="srtSubmitBtn">
+            <span>Convert & Download Excel</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <h3><i class="fas fa-info-circle"></i> Excel Format Requirements</h3>
+      <ul>
+        <li><strong>Required Columns:</strong> <code>Start Time</code>, <code>End Time</code>, <code>Subtitle Text</code></li>
+        <li><strong>Time Format:</strong> <code>HH:MM:SS,mmm</code> (e.g. <code>00:01:23,456</code>)</li>
+        <li><strong>Text Format:</strong> Plain text (no formatting or formulas)</li>
+        <li><strong>File Types:</strong> .xlsx, .xls (Excel 2007+)</li>
+      </ul>
+      <a href="/static/sample_subtitles_template.xlsx" class="download-template" download>
+        <i class="fas fa-download"></i> Download Sample Template
+      </a>
+    </div>
+
+    <footer>
+      <p>Need help? <a href="mailto:support@subtitleconverter.com">Contact support</a></p>
+      <p>© 2023 Subtitle Tools Pro. All rights reserved.</p>
+    </footer>
   </div>
 
-  <div class="section">
-    <h2>📤 SRT to Excel</h2>
-    <form action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
-      <input type="file" name="srtfile" required><br><br>
-      <button type="submit">Convert & Download Excel</button>
-    </form>
-  </div>
+  <script>
+    // File name display
+    document.getElementById('excelfile').addEventListener('change', function(e) {
+      const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+      document.getElementById('excelFileName').textContent = fileName;
+    });
 
-  <div class="instructions">
-    <h3>📄 Excel Format Instructions (For SRT Conversion)</h3>
-    <ul>
-      <li><strong>Start Time</strong> – Format: <code>HH:MM:SS,mmm</code> (e.g. <code>00:01:05,500</code>)</li>
-      <li><strong>End Time</strong> – Same format as Start Time</li>
-      <li><strong>Subtitle Text</strong> – Your dialogue or captions</li>
-    </ul>
-    <p>Make sure your Excel file includes these three columns, with no empty rows, merged cells, or extra headers.</p>
-    <p><a href="/static/sample_subtitles_template.xlsx" download>📥 Download Sample Excel Template</a></p>
-  </div>
+    document.getElementById('srtfile').addEventListener('change', function(e) {
+      const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+      document.getElementById('srtFileName').textContent = fileName;
+    });
+
+    // Form submission handling
+    document.getElementById('excelToSrtForm').addEventListener('submit', function(e) {
+      const btn = document.getElementById('excelSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Processing...';
+    });
+
+    document.getElementById('srtToExcelForm').addEventListener('submit', function(e) {
+      const btn = document.getElementById('srtSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Processing...';
+    });
+
+    // Error handling (example - you would implement actual error detection)
+    function showError(formId, message) {
+      const statusEl = document.getElementById(formId === 'excelToSrtForm' ? 'excelStatus' : 'srtStatus');
+      statusEl.textContent = message;
+      statusEl.className = 'status-message error';
+      
+      const btn = document.getElementById(formId === 'excelToSrtForm' ? 'excelSubmitBtn' : 'srtSubmitBtn');
+      btn.disabled = false;
+      btn.innerHTML = formId === 'excelToSrtForm' ? 'Convert & Download SRT' : 'Convert & Download Excel';
+    }
+
+    // Example error simulation (remove in production)
+    // setTimeout(() => showError('excelToSrtForm', 'Error: Invalid Excel format detected'), 2000);
+  </script>
 </body>
 </html>
