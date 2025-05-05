@@ -62,23 +62,107 @@ def remove_cc():
     if file.filename.endswith('.srt'):
         content = file.read().decode('utf-8')
         cleaned_lines = []
-
-        cc_patterns = [r"\[.*?\]", r"\(.*?\)", r"<.*?>"]
-
+        
+        # Common CC patterns
+        patterns = [
+            r"\[.*?\]",    # [text]
+            r"\(.*?\)",    # (text)
+            r"<.*?>",      # <text>
+            r'^".*"$',     # Entire line in quotes
+            r"^♪.*$",      # Music symbols
+            r"^♫.*$",      # Music symbols
+            r"^[A-Z\s]+$", # ALL CAPS LINES (common for CC)
+            r"^[#@].*$",   # Lines starting with # or @
+            r"^\*.*\*$",   # *text*
+            r"^_._$",      # _text_
+            r"^●.*$",      # ● bullet points
+            r"^►.*$",     # ► arrows
+            r"^[0-9]+$",   # Standalone numbers (could be mistaken for subtitle numbers)
+        ]
+        
+        # Keep track of subtitle numbering
+        current_number = 0
+        prev_line_was_number = False
+        
         for line in content.splitlines():
-            if any(re.search(pattern, line) for pattern in cc_patterns):
+            line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                cleaned_lines.append(line)
+                prev_line_was_number = False
                 continue
-            cleaned_lines.append(line)
-
+                
+            # Handle subtitle numbering
+            if line.isdigit():
+                current_number = int(line)
+                cleaned_lines.append(line)
+                prev_line_was_number = True
+                continue
+                
+            # Skip timing lines (we want to keep these)
+            if re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", line):
+                cleaned_lines.append(line)
+                prev_line_was_number = False
+                continue
+                
+            # Check for CC patterns
+            is_cc = any(re.search(pattern, line) for pattern in patterns)
+            
+            # Special case: don't remove lines that are part of the actual dialogue
+            if not is_cc or (prev_line_was_number and not any(re.fullmatch(pattern, line) for pattern in patterns)):
+                cleaned_lines.append(line)
+                
+            prev_line_was_number = False
+            
         cleaned_content = "\n".join(cleaned_lines)
-
+        
+        # Fix numbering in case we removed some entries
+        cleaned_content = renumber_subtitles(cleaned_content)
+        
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
         temp.write(cleaned_content)
         temp.close()
-
+        
         return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
-
+    
     return redirect('/cc-remover')
+
+def renumber_subtitles(content):
+    """Renumber subtitles sequentially after some were removed"""
+    lines = content.splitlines()
+    new_lines = []
+    current_num = 1
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
+        if line.isdigit():
+            # Replace with new number
+            new_lines.append(str(current_num))
+            current_num += 1
+            i += 1
+            
+            # Keep timing line
+            if i < len(lines):
+                new_lines.append(lines[i])
+                i += 1
+                
+            # Keep text lines until empty line
+            while i < len(lines) and lines[i].strip():
+                new_lines.append(lines[i])
+                i += 1
+                
+            # Add empty line if exists
+            if i < len(lines) and not lines[i].strip():
+                new_lines.append(lines[i])
+                i += 1
+        else:
+            new_lines.append(lines[i])
+            i += 1
+            
+    return "\n".join(new_lines)
 
 # === EXCEL ⇄ SRT CONVERTER ===
 @app.route('/convert-excel-to-srt', methods=['POST'])
