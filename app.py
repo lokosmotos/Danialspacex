@@ -4,6 +4,9 @@ import re
 import tempfile
 import json
 import pandas as pd
+import re
+import zipfile
+from io import BytesIO
 from werkzeug.utils import secure_filename
 from opencc import OpenCC
 from langdetect import detect
@@ -72,50 +75,17 @@ def split_bilingual():
         return redirect('/split-bilingual')
 
     content = file.read().decode('utf-8', errors='ignore')
-    
-    blocks = content.strip().split('\n\n')
-    eng_blocks = []
-    rus_blocks = []
 
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) < 3:
-            continue
+    eng_blocks, rus_blocks = split_bilingual_subtitles(content)
 
-        block_number = lines[0]
-        timecode = lines[1]
-        text = '\n'.join(lines[2:])
+    eng_content = '\n\n'.join(eng_blocks)
+    rus_content = '\n\n'.join(rus_blocks)
 
-        try:
-            lang = detect(text)
-        except:
-            lang = 'unknown'
-
-        new_block = f"{block_number}\n{timecode}\n{text}"
-        if lang == 'ru':
-            rus_blocks.append(new_block)
-        elif lang == 'en':
-            eng_blocks.append(new_block)
-        else:
-            # fallback: based on majority non-ASCII chars
-            non_ascii = sum(1 for c in text if ord(c) > 127)
-            if non_ascii > len(text) / 2:
-                rus_blocks.append(new_block)
-            else:
-                eng_blocks.append(new_block)
-
-    # Renumber both files
-    eng_srt = renumber_subtitles_content('\n\n'.join(eng_blocks))
-    rus_srt = renumber_subtitles_content('\n\n'.join(rus_blocks))
-
-    # Create a zip with both
-    from io import BytesIO
-    import zipfile
-
+    # Create zip
     zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        zipf.writestr('english.srt', eng_srt)
-        zipf.writestr('russian.srt', rus_srt)
+    with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr('english.srt', eng_content)
+        zip_file.writestr('russian.srt', rus_content)
 
     zip_buffer.seek(0)
     return send_file(
@@ -125,26 +95,53 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-def renumber_subtitles_content(content):
-    """Renumber subtitles sequentially from content string"""
-    blocks = content.split('\n\n')
-    new_blocks = []
-    current_num = 1
-    
+# ========== HELPER FUNCTIONS ==========
+
+def is_russian(text):
+    return bool(re.search(r'[А-Яа-яЁё]', text))
+
+def split_bilingual_subtitles(content):
+    blocks = content.strip().split('\n\n')
+    eng_blocks = []
+    rus_blocks = []
+    eng_index = 1
+    rus_index = 1
+
     for block in blocks:
-        if not block.strip():
-            continue
-            
-        lines = block.split('\n')
+        lines = block.strip().split('\n')
         if len(lines) < 3:
             continue
-            
-        # Keep the time line and text lines, only change the number
-        new_block = f"{current_num}\n{lines[1]}\n" + "\n".join(lines[2:])
-        new_blocks.append(new_block)
-        current_num += 1
-    
-    return '\n\n'.join(new_blocks)
+
+        number = lines[0].strip()
+        timecode = lines[1].strip()
+        text_lines = lines[2:]
+
+        # Detect where Russian starts
+        split_index = None
+        for i, line in enumerate(text_lines):
+            if is_russian(line):
+                split_index = i
+                break
+
+        if split_index is None:
+            # No Russian found — treat all as English
+            eng_text = text_lines
+            rus_text = []
+        else:
+            eng_text = text_lines[:split_index]
+            rus_text = text_lines[split_index:]
+
+        if eng_text:
+            eng_block = f"{eng_index}\n{timecode}\n" + '\n'.join(eng_text)
+            eng_blocks.append(eng_block)
+            eng_index += 1
+
+        if rus_text:
+            rus_block = f"{rus_index}\n{timecode}\n" + '\n'.join(rus_text)
+            rus_blocks.append(rus_block)
+            rus_index += 1
+
+    return eng_blocks, rus_blocks
 
 # === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
