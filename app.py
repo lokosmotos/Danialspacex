@@ -61,6 +61,7 @@ def upload_chinese_srt():
                            detected_variant=variant)
 
 # === BILINGUAL SPLITTER ===
+# === BILINGUAL SPLITTER ===
 @app.route('/split-bilingual', methods=['GET', 'POST'])
 def split_bilingual():
     if request.method == 'GET':
@@ -81,7 +82,7 @@ def split_bilingual():
             continue
             
         lines = block.split('\n')
-        if len(lines) < 3:
+        if len(lines) < 3:  # Not a valid subtitle block
             continue
             
         block_number = lines[0].strip()
@@ -92,37 +93,33 @@ def split_bilingual():
         lang1_lines = []
         lang2_lines = []
         
-        # Determine the primary language of this block
-        primary_lang = None
         for line in text_lines:
-            is_lang2 = any(ord(char) > 127 for char in line)
-            if primary_lang is None:
-                primary_lang = 'lang2' if is_lang2 else 'lang1'
-            
-            if is_lang2:
+            # Check if line contains non-ASCII characters (for Russian)
+            if any(ord(char) > 127 for char in line):
                 lang2_lines.append(line)
             else:
                 lang1_lines.append(line)
         
-        # Create separate blocks if we have both languages
-        if lang1_lines and lang2_lines:
-            # Create English block
+        # Create separate blocks for each language if they exist
+        if lang1_lines:
             lang1_block = f"{block_number}\n{time_line}\n" + "\n".join(lang1_lines)
             lang1_blocks.append(lang1_block)
             
-            # Create Russian block with same timing
+        if lang2_lines:
             lang2_block = f"{block_number}\n{time_line}\n" + "\n".join(lang2_lines)
             lang2_blocks.append(lang2_block)
-        elif lang1_lines:
-            # English only block
-            lang1_blocks.append(block)
-        elif lang2_lines:
-            # Russian only block
-            lang2_blocks.append(block)
     
-    # Renumber and create final content
-    lang1_content = renumber_subtitles(lang1_blocks)
-    lang2_content = renumber_subtitles(lang2_blocks)
+    # Generate the final content for each language
+    lang1_content = "\n\n".join(lang1_blocks)
+    lang2_content = "\n\n".join(lang2_blocks)
+    
+    # Renumber both files sequentially
+    lang1_content = renumber_subtitles_content(lang1_content)
+    lang2_content = renumber_subtitles_content(lang2_content)
+    
+    # Create a zip file with both
+    import zipfile
+    from io import BytesIO
     
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -137,15 +134,25 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-def renumber_subtitles(blocks):
-    """Renumber subtitles sequentially from a list of blocks."""
+def renumber_subtitles_content(content):
+    """Renumber subtitles sequentially from content string"""
+    blocks = content.split('\n\n')
     new_blocks = []
-    for idx, block in enumerate(blocks, start=1):
+    current_num = 1
+    
+    for block in blocks:
+        if not block.strip():
+            continue
+            
         lines = block.split('\n')
         if len(lines) < 3:
             continue
-        new_block = f"{idx}\n{lines[1]}\n" + "\n".join(lines[2:])
+            
+        # Keep the time line and text lines, only change the number
+        new_block = f"{current_num}\n{lines[1]}\n" + "\n".join(lines[2:])
         new_blocks.append(new_block)
+        current_num += 1
+    
     return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
