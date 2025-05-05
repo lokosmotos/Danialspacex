@@ -69,11 +69,12 @@ def split_bilingual():
 
     content = file.read().decode('utf-8', errors='ignore')
     
-    # Split into separate languages
-    lang1_blocks = []
-    lang2_blocks = []
+    # Process the SRT file block by block
+    lang1_blocks = []  # English blocks
+    lang2_blocks = []  # Russian blocks
     
-    blocks = content.split('\n\n')  # Split by empty lines
+    # Split into blocks (each subtitle is separated by empty lines)
+    blocks = content.strip().split('\n\n')
     
     for block in blocks:
         if not block.strip():
@@ -83,38 +84,38 @@ def split_bilingual():
         if len(lines) < 3:  # Not a valid subtitle block
             continue
             
-        # Extract number, time, and text
+        # Extract block components
         block_number = lines[0].strip()
         time_line = lines[1].strip()
         text_lines = [line.strip() for line in lines[2:] if line.strip()]
         
-        # Separate languages
-        lang1_lines = []
-        lang2_lines = []
+        # Separate languages within this block
+        lang1_text = []
+        lang2_text = []
         
         for line in text_lines:
-            # Check if line contains non-ASCII characters (assuming second language uses them)
+            # Check if line contains non-ASCII characters (for Russian)
             if any(ord(char) > 127 for char in line):
-                lang2_lines.append(line)
+                lang2_text.append(line)
             else:
-                lang1_lines.append(line)
+                lang1_text.append(line)
         
-        # Create language blocks only if they have content
-        if lang1_lines:
-            lang1_block = [block_number, time_line] + lang1_lines
-            lang1_blocks.append('\n'.join(lang1_block))
+        # Create separate blocks for each language if they exist
+        if lang1_text:
+            lang1_block = f"{block_number}\n{time_line}\n" + "\n".join(lang1_text)
+            lang1_blocks.append(lang1_block)
             
-        if lang2_lines:
-            lang2_block = [block_number, time_line] + lang2_lines
-            lang2_blocks.append('\n'.join(lang2_block))
+        if lang2_text:
+            lang2_block = f"{block_number}\n{time_line}\n" + "\n".join(lang2_text)
+            lang2_blocks.append(lang2_block)
     
-    # Create separate SRT files
-    lang1_content = '\n\n'.join(lang1_blocks)
-    lang2_content = '\n\n'.join(lang2_blocks)
+    # Generate the final content for each language
+    lang1_content = "\n\n".join(lang1_blocks)
+    lang2_content = "\n\n".join(lang2_blocks)
     
-    # Renumber both files properly
-    lang1_content = renumber_subtitles_preserve(lang1_content)
-    lang2_content = renumber_subtitles_preserve(lang2_content)
+    # Renumber both files sequentially
+    lang1_content = renumber_subtitles(lang1_content)
+    lang2_content = renumber_subtitles(lang2_content)
     
     # Create a zip file with both
     import zipfile
@@ -133,8 +134,8 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-def renumber_subtitles_preserve(content):
-    """Renumber subtitles sequentially while preserving original structure"""
+def renumber_subtitles(content):
+    """Renumber subtitles sequentially"""
     blocks = content.split('\n\n')
     new_blocks = []
     current_num = 1
@@ -147,9 +148,9 @@ def renumber_subtitles_preserve(content):
         if len(lines) < 3:
             continue
             
-        # Rebuild block with new number
-        new_block = [str(current_num), lines[1]] + lines[2:]
-        new_blocks.append('\n'.join(new_block))
+        # Keep the time line and text lines, only change the number
+        new_block = f"{current_num}\n{lines[1]}\n" + "\n".join(lines[2:])
+        new_blocks.append(new_block)
         current_num += 1
     
     return '\n\n'.join(new_blocks)
