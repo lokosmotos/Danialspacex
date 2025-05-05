@@ -76,44 +76,37 @@ def remove_cc():
             r"^\*.*\*$",   # *text*
             r"^_._$",      # _text_
             r"^●.*$",      # ● bullet points
-            r"^►.*$",     # ► arrows
-            r"^[0-9]+$",   # Standalone numbers (could be mistaken for subtitle numbers)
+            r"^►.*$",      # ► arrows
         ]
         
-        # Keep track of subtitle numbering
-        current_number = 0
-        prev_line_was_number = False
+        # State tracking
+        in_quoted_block = False
+        current_block = []
         
         for line in content.splitlines():
-            line = line.strip()
+            stripped = line.strip()
             
-            # Skip empty lines
-            if not line:
-                cleaned_lines.append(line)
-                prev_line_was_number = False
+            # Check if this line starts a quoted block
+            if stripped.startswith('"') and not in_quoted_block:
+                in_quoted_block = True
+                current_block = [line]  # Store original line with whitespace
                 continue
                 
-            # Handle subtitle numbering
-            if line.isdigit():
-                current_number = int(line)
-                cleaned_lines.append(line)
-                prev_line_was_number = True
+            # If we're in a quoted block
+            if in_quoted_block:
+                current_block.append(line)
+                # Check if this line ends the quoted block
+                if stripped.endswith('"'):
+                    in_quoted_block = False
+                    # Skip adding this entire block to cleaned lines
+                    current_block = []
                 continue
                 
-            # Skip timing lines (we want to keep these)
-            if re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", line):
-                cleaned_lines.append(line)
-                prev_line_was_number = False
+            # Regular line processing
+            if any(re.search(pattern, stripped) for pattern in patterns):
                 continue
                 
-            # Check for CC patterns
-            is_cc = any(re.search(pattern, line) for pattern in patterns)
-            
-            # Special case: don't remove lines that are part of the actual dialogue
-            if not is_cc or (prev_line_was_number and not any(re.fullmatch(pattern, line) for pattern in patterns)):
-                cleaned_lines.append(line)
-                
-            prev_line_was_number = False
+            cleaned_lines.append(line)
             
         cleaned_content = "\n".join(cleaned_lines)
         
