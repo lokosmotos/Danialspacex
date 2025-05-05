@@ -6,6 +6,7 @@ import json
 import pandas as pd
 from werkzeug.utils import secure_filename
 from opencc import OpenCC
+from langdetect import detect
 
 app = Flask(__name__)
 
@@ -61,7 +62,6 @@ def upload_chinese_srt():
                            detected_variant=variant)
 
 # === BILINGUAL SPLITTER ===
-# === BILINGUAL SPLITTER ===
 @app.route('/split-bilingual', methods=['GET', 'POST'])
 def split_bilingual():
     if request.method == 'GET':
@@ -73,59 +73,50 @@ def split_bilingual():
 
     content = file.read().decode('utf-8', errors='ignore')
     
-    lang1_blocks = []  # English blocks
-    lang2_blocks = []  # Russian blocks
     blocks = content.strip().split('\n\n')
-    
+    eng_blocks = []
+    rus_blocks = []
+
     for block in blocks:
-        if not block.strip():
+        lines = block.strip().split('\n')
+        if len(lines) < 3:
             continue
-            
-        lines = block.split('\n')
-        if len(lines) < 3:  # Not a valid subtitle block
-            continue
-            
-        block_number = lines[0].strip()
-        time_line = lines[1].strip()
-        text_lines = [line.strip() for line in lines[2:] if line.strip()]
-        
-        # Separate into language groups
-        lang1_lines = []
-        lang2_lines = []
-        
-        for line in text_lines:
-            # Check if line contains non-ASCII characters (for Russian)
-            if any(ord(char) > 127 for char in line):
-                lang2_lines.append(line)
+
+        block_number = lines[0]
+        timecode = lines[1]
+        text = '\n'.join(lines[2:])
+
+        try:
+            lang = detect(text)
+        except:
+            lang = 'unknown'
+
+        new_block = f"{block_number}\n{timecode}\n{text}"
+        if lang == 'ru':
+            rus_blocks.append(new_block)
+        elif lang == 'en':
+            eng_blocks.append(new_block)
+        else:
+            # fallback: based on majority non-ASCII chars
+            non_ascii = sum(1 for c in text if ord(c) > 127)
+            if non_ascii > len(text) / 2:
+                rus_blocks.append(new_block)
             else:
-                lang1_lines.append(line)
-        
-        # Create separate blocks for each language if they exist
-        if lang1_lines:
-            lang1_block = f"{block_number}\n{time_line}\n" + "\n".join(lang1_lines)
-            lang1_blocks.append(lang1_block)
-            
-        if lang2_lines:
-            lang2_block = f"{block_number}\n{time_line}\n" + "\n".join(lang2_lines)
-            lang2_blocks.append(lang2_block)
-    
-    # Generate the final content for each language
-    lang1_content = "\n\n".join(lang1_blocks)
-    lang2_content = "\n\n".join(lang2_blocks)
-    
-    # Renumber both files sequentially
-    lang1_content = renumber_subtitles_content(lang1_content)
-    lang2_content = renumber_subtitles_content(lang2_content)
-    
-    # Create a zip file with both
-    import zipfile
+                eng_blocks.append(new_block)
+
+    # Renumber both files
+    eng_srt = renumber_subtitles_content('\n\n'.join(eng_blocks))
+    rus_srt = renumber_subtitles_content('\n\n'.join(rus_blocks))
+
+    # Create a zip with both
     from io import BytesIO
-    
+    import zipfile
+
     zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
-        zip_file.writestr('english.srt', lang1_content.encode('utf-8'))
-        zip_file.writestr('russian.srt', lang2_content.encode('utf-8'))
-    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        zipf.writestr('english.srt', eng_srt)
+        zipf.writestr('russian.srt', rus_srt)
+
     zip_buffer.seek(0)
     return send_file(
         zip_buffer,
