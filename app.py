@@ -61,13 +61,6 @@ def upload_chinese_srt():
                            detected_variant=variant)
 
 # === BILINGUAL SPLITTER ===
-from flask import Flask, request, send_file, render_template, redirect
-from io import BytesIO
-import zipfile
-import os
-
-app = Flask(__name__)
-
 @app.route('/split-bilingual', methods=['GET', 'POST'])
 def split_bilingual():
     if request.method == 'GET':
