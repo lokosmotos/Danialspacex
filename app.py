@@ -93,20 +93,12 @@ def split_bilingual():
         lang1_text = []
         lang2_text = []
         
-        current_lang = None
         for line in text_lines:
-            # Detect language for this line
-            has_non_ascii = any(ord(char) > 127 for char in line)
-            
-            # First line determines the language grouping
-            if current_lang is None:
-                current_lang = 'lang2' if has_non_ascii else 'lang1'
-            
-            # Add to appropriate language
-            if current_lang == 'lang1':
-                lang1_text.append(line)
-            else:
+            # Check if line contains non-ASCII characters (for Russian)
+            if any(ord(char) > 127 for char in line):
                 lang2_text.append(line)
+            else:
+                lang1_text.append(line)
         
         # Create separate blocks for each language if they exist
         if lang1_text:
