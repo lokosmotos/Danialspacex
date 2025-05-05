@@ -4,12 +4,11 @@ import re
 import tempfile
 import json
 import pandas as pd
-import re
 import zipfile
 from io import BytesIO
 from werkzeug.utils import secure_filename
 from opencc import OpenCC
-from langdetect import detect
+from langdetect import detect, LangDetectException
 
 app = Flask(__name__)
 
@@ -58,11 +57,11 @@ def upload_chinese_srt():
     converted_text, diffs = convert_chinese_variant(content, direction)
 
     return render_template('converted_chinese_result.html', 
-                           original=content, 
-                           converted=converted_text, 
-                           diffs=diffs,
-                           direction=direction,
-                           detected_variant=variant)
+                         original=content, 
+                         converted=converted_text, 
+                         diffs=diffs,
+                         direction=direction,
+                         detected_variant=variant)
 
 # === BILINGUAL SPLITTER ===
 @app.route('/split-bilingual', methods=['GET', 'POST'])
@@ -75,17 +74,22 @@ def split_bilingual():
         return redirect('/split-bilingual')
 
     content = file.read().decode('utf-8', errors='ignore')
-
+    
     eng_blocks, rus_blocks = split_bilingual_subtitles(content)
 
+    # Generate the final content for each language
     eng_content = '\n\n'.join(eng_blocks)
     rus_content = '\n\n'.join(rus_blocks)
 
-    # Create zip
+    # Renumber both files sequentially
+    eng_content = renumber_subtitles(eng_content)
+    rus_content = renumber_subtitles(rus_content)
+
+    # Create zip file
     zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr('english.srt', eng_content)
-        zip_file.writestr('russian.srt', rus_content)
+    with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+        zip_file.writestr('english.srt', eng_content.encode('utf-8'))
+        zip_file.writestr('russian.srt', rus_content.encode('utf-8'))
 
     zip_buffer.seek(0)
     return send_file(
@@ -95,53 +99,79 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-# ========== HELPER FUNCTIONS ==========
-
+# === HELPER FUNCTIONS ===
 def is_russian(text):
+    """Improved Russian detection using regex for Cyrillic characters"""
     return bool(re.search(r'[А-Яа-яЁё]', text))
 
 def split_bilingual_subtitles(content):
+    """Split bilingual subtitles into separate English and Russian blocks"""
     blocks = content.strip().split('\n\n')
     eng_blocks = []
     rus_blocks = []
-    eng_index = 1
-    rus_index = 1
-
+    
     for block in blocks:
-        lines = block.strip().split('\n')
+        if not block.strip():
+            continue
+            
+        lines = block.split('\n')
+        if len(lines) < 3:  # Not a valid subtitle block
+            continue
+            
+        block_number = lines[0].strip()
+        time_line = lines[1].strip()
+        text_lines = [line.strip() for line in lines[2:] if line.strip()]
+        
+        # Separate into language groups
+        eng_lines = []
+        rus_lines = []
+        
+        for line in text_lines:
+            try:
+                # First try langdetect for more accurate detection
+                lang = detect(line)
+                if lang == 'ru':
+                    rus_lines.append(line)
+                else:
+                    eng_lines.append(line)
+            except LangDetectException:
+                # Fallback to character detection if langdetect fails
+                if is_russian(line):
+                    rus_lines.append(line)
+                else:
+                    eng_lines.append(line)
+        
+        # Create separate blocks for each language
+        if eng_lines:
+            eng_block = f"{block_number}\n{time_line}\n" + "\n".join(eng_lines)
+            eng_blocks.append(eng_block)
+            
+        if rus_lines:
+            rus_block = f"{block_number}\n{time_line}\n" + "\n".join(rus_lines)
+            rus_blocks.append(rus_block)
+    
+    return eng_blocks, rus_blocks
+
+def renumber_subtitles(content):
+    """Renumber subtitles sequentially from content string"""
+    blocks = content.split('\n\n')
+    new_blocks = []
+    current_num = 1
+    
+    for block in blocks:
+        if not block.strip():
+            continue
+            
+        lines = block.split('\n')
         if len(lines) < 3:
             continue
-
-        number = lines[0].strip()
-        timecode = lines[1].strip()
-        text_lines = lines[2:]
-
-        # Detect where Russian starts
-        split_index = None
-        for i, line in enumerate(text_lines):
-            if is_russian(line):
-                split_index = i
-                break
-
-        if split_index is None:
-            # No Russian found — treat all as English
-            eng_text = text_lines
-            rus_text = []
-        else:
-            eng_text = text_lines[:split_index]
-            rus_text = text_lines[split_index:]
-
-        if eng_text:
-            eng_block = f"{eng_index}\n{timecode}\n" + '\n'.join(eng_text)
-            eng_blocks.append(eng_block)
-            eng_index += 1
-
-        if rus_text:
-            rus_block = f"{rus_index}\n{timecode}\n" + '\n'.join(rus_text)
-            rus_blocks.append(rus_block)
-            rus_index += 1
-
-    return eng_blocks, rus_blocks
+            
+        # Keep the time line and text lines, only change the number
+        new_block = f"{current_num}\n{lines[1]}\n" + "\n".join(lines[2:])
+        new_blocks.append(new_block)
+        current_num += 1
+    
+    return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
@@ -208,42 +238,6 @@ def remove_cc():
         return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
     
     return redirect('/cc-remover')
-
-def renumber_subtitles(content):
-    """Renumber subtitles sequentially after some were removed"""
-    lines = content.splitlines()
-    new_lines = []
-    current_num = 1
-    
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        
-        if line.isdigit():
-            # Replace with new number
-            new_lines.append(str(current_num))
-            current_num += 1
-            i += 1
-            
-            # Keep timing line
-            if i < len(lines):
-                new_lines.append(lines[i])
-                i += 1
-                
-            # Keep text lines until empty line
-            while i < len(lines) and lines[i].strip():
-                new_lines.append(lines[i])
-                i += 1
-                
-            # Add empty line if exists
-            if i < len(lines) and not lines[i].strip():
-                new_lines.append(lines[i])
-                i += 1
-        else:
-            new_lines.append(lines[i])
-            i += 1
-            
-    return "\n".join(new_lines)
 
 # === EXCEL ⇄ SRT CONVERTER ===
 @app.route('/convert-excel-to-srt', methods=['POST'])
@@ -330,9 +324,9 @@ def check_profanity_route():
 
         if profanities:
             return render_template('edit_profanities.html',
-                                   content=content,
-                                   profanities=profanities,
-                                   original_filename=file.filename)
+                                 content=content,
+                                 profanities=profanities,
+                                 original_filename=file.filename)
         else:
             return "No profanities detected"
 
@@ -346,10 +340,10 @@ def final_qc():
 
     if profanities:
         return render_template('edit_profanities.html',
-                               content=content,
-                               profanities=profanities,
-                               original_filename=original_filename,
-                               message="Still contains profanity!")
+                             content=content,
+                             profanities=profanities,
+                             original_filename=original_filename,
+                             message="Still contains profanity!")
     else:
         suffix = '.srt' if original_filename.endswith('.srt') else '.txt'
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, mode='w', encoding='utf-8') as temp:
@@ -391,9 +385,9 @@ def convert_chinese_form():
     converted_text, diffs = convert_chinese_variant(text, direction)
 
     return render_template('chinese_converter_result.html',
-                           original_text=text,
-                           converted_text=converted_text,
-                           diffs=diffs)
+                         original_text=text,
+                         converted_text=converted_text,
+                         diffs=diffs)
 
 # JSON API (for fetch/XHR/AJAX)
 @app.route('/api/convert-chinese', methods=['POST'])
