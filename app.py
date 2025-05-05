@@ -72,9 +72,6 @@ def split_bilingual():
     # Split into separate languages
     lang1_blocks = []
     lang2_blocks = []
-    current_block = []
-    current_number = None
-    current_time = None
     
     blocks = content.split('\n\n')  # Split by empty lines
     
@@ -115,9 +112,9 @@ def split_bilingual():
     lang1_content = '\n\n'.join(lang1_blocks)
     lang2_content = '\n\n'.join(lang2_blocks)
     
-    # Renumber both files while preserving original block numbers where possible
-    lang1_content = renumber_subtitles(lang1_content, preserve_original=True)
-    lang2_content = renumber_subtitles(lang2_content, preserve_original=True)
+    # Renumber both files properly
+    lang1_content = renumber_subtitles_preserve(lang1_content)
+    lang2_content = renumber_subtitles_preserve(lang2_content)
     
     # Create a zip file with both
     import zipfile
@@ -136,8 +133,8 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-def renumber_subtitles(content, preserve_original=False):
-    """Renumber subtitles sequentially while optionally preserving original numbers"""
+def renumber_subtitles_preserve(content):
+    """Renumber subtitles sequentially while preserving original structure"""
     blocks = content.split('\n\n')
     new_blocks = []
     current_num = 1
@@ -150,16 +147,10 @@ def renumber_subtitles(content, preserve_original=False):
         if len(lines) < 3:
             continue
             
-        # Keep original number if requested
-        if preserve_original and lines[0].strip().isdigit():
-            new_num = lines[0].strip()
-        else:
-            new_num = str(current_num)
-            current_num += 1
-            
         # Rebuild block with new number
-        new_block = [new_num, lines[1]] + lines[2:]
+        new_block = [str(current_num), lines[1]] + lines[2:]
         new_blocks.append('\n'.join(new_block))
+        current_num += 1
     
     return '\n\n'.join(new_blocks)
 
