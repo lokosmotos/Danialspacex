@@ -33,6 +33,11 @@ def zht_zhs_converter():
 @app.route('/chinese-converter')
 def chinese_converter():
     return render_template('chinese_converter.html')
+
+@app.route('/bilingual-splitter')
+def bilingual_splitter():
+    return render_template('bilingual_splitter.html')
+
 @app.route('/upload-chinese-srt', methods=['POST'])
 def upload_chinese_srt():
     file = request.files.get('srtfile')
@@ -54,6 +59,82 @@ def upload_chinese_srt():
                            diffs=diffs,
                            direction=direction,
                            detected_variant=variant)
+
+# === BILINGUAL SPLITTER ===
+@app.route('/split-bilingual', methods=['POST'])
+def split_bilingual():
+    file = request.files.get('srtfile')
+    if not file or not file.filename.endswith('.srt'):
+        return redirect('/bilingual-splitter')
+
+    content = file.read().decode('utf-8', errors='ignore')
+    
+    # Split into separate languages
+    lang1_lines = []
+    lang2_lines = []
+    current_block = []
+    current_lang = None
+    
+    for line in content.splitlines():
+        stripped = line.strip()
+        
+        if stripped.isdigit() or '-->' in line:
+            # This is a number or timestamp line
+            if current_block:
+                # Process the previous block
+                if current_lang == 1:
+                    lang1_lines.extend(current_block)
+                elif current_lang == 2:
+                    lang2_lines.extend(current_block)
+                current_block = []
+            current_block.append(line)
+            current_lang = None
+        elif stripped:
+            # This is a text line
+            current_block.append(line)
+            # Detect language if not already detected for this block
+            if current_lang is None:
+                # Simple heuristic: if line has non-ASCII, assume it's the second language
+                if any(ord(char) > 127 for char in stripped):
+                    current_lang = 2
+                else:
+                    current_lang = 1
+        else:
+            # Empty line - end of subtitle block
+            if current_block:
+                if current_lang == 1:
+                    lang1_lines.extend(current_block)
+                elif current_lang == 2:
+                    lang2_lines.extend(current_block)
+                current_block = []
+            current_lang = None
+            lang1_lines.append('')
+            lang2_lines.append('')
+    
+    # Create separate SRT files
+    lang1_content = "\n".join(lang1_lines).strip()
+    lang2_content = "\n".join(lang2_lines).strip()
+    
+    # Renumber both files
+    lang1_content = renumber_subtitles(lang1_content)
+    lang2_content = renumber_subtitles(lang2_content)
+    
+    # Create a zip file with both
+    import zipfile
+    from io import BytesIO
+    
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+        zip_file.writestr('language1.srt', lang1_content.encode('utf-8'))
+        zip_file.writestr('language2.srt', lang2_content.encode('utf-8'))
+    
+    zip_buffer.seek(0)
+    return send_file(
+        zip_buffer,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='separated_languages.zip'
+    )
 
 # === CC REMOVER ===
 @app.route('/remove-cc', methods=['POST'])
@@ -291,7 +372,7 @@ def convert_chinese_variant(text, direction='s2t'):
             diffs.append((line, converted))
     return "\n".join(converted_lines), diffs
 
-# 🟢 NEW HTML-FORM-FRIENDLY ROUTE
+# HTML-FORM-FRIENDLY ROUTE
 @app.route('/convert-chinese', methods=['POST'])
 def convert_chinese_form():
     text = request.form.get('chinese_text')
@@ -307,7 +388,7 @@ def convert_chinese_form():
                            converted_text=converted_text,
                            diffs=diffs)
 
-# 🟢 JSON API (for fetch/XHR/AJAX)
+# JSON API (for fetch/XHR/AJAX)
 @app.route('/api/convert-chinese', methods=['POST'])
 def convert_chinese_api():
     data = request.get_json()
@@ -327,7 +408,6 @@ def download_converted():
     with tempfile.NamedTemporaryFile(delete=False, suffix='.srt', mode='w', encoding='utf-8') as temp:
         temp.write(converted)
     return send_file(temp.name, as_attachment=True, download_name='converted_chinese.srt')
-
 
 # === RUN ===
 if __name__ == '__main__':
