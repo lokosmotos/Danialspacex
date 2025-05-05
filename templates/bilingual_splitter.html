@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bilingual Subtitle Splitter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Bilingual Subtitle Splitter</h1>
+        <p>Upload a bilingual SRT file to separate into two language files</p>
+        
+        <form action="/split-bilingual" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="srtfile">SRT File:</label>
+                <input type="file" id="srtfile" name="srtfile" accept=".srt" required>
+            </div>
+            <button type="submit" class="btn">Split Subtitles</button>
+        </form>
+        
+        <div class="instructions">
+            <h3>How it works:</h3>
+            <ol>
+                <li>Upload an SRT file containing two languages (like English and Russian)</li>
+                <li>The tool will automatically detect and separate the languages</li>
+                <li>You'll receive a ZIP file with two SRT files - one for each language</li>
+            </ol>
+            <p>Note: The tool uses simple heuristics to detect languages. For best results, ensure each subtitle block has consistent language ordering.</p>
+        </div>
+        
+        <a href="/" class="back-link">← Back to Home</a>
+    </div>
+</body>
+</html>
