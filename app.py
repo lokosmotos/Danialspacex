@@ -177,38 +177,56 @@ def renumber_subtitles(content):
 @app.route('/remove-cc', methods=['POST'])
 def remove_cc():
     file = request.files['srtfile']
-    if file.filename.endswith('.srt'):
-        try:
-            content = file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            file.seek(0)
-            content = file.read().decode('ISO-8859-1')
+    if not file.filename.endswith('.srt'):
+        return redirect('/cc-remover')
 
-        cc_patterns = [
-            r"\[.*?\]",
-            r"\(.*?\)",
-            r"<.*?>",
-            r'"[^"]*"',
-            r"^♪.*$"
-        ]
+    content = file.read().decode('utf-8')
+    cleaned_lines = []
 
-        for pattern in cc_patterns:
-            content = re.sub(pattern, '', content, flags=re.DOTALL | re.MULTILINE)
+    # Patterns that identify CC lines (to be blanked out)
+    CC_PATTERNS = [
+        r"\[.*?\]",      # [text]
+        r"\(.*?\)",      # (text)
+        r"<.*?>",        # <text>
+        r'^".*"$',       # Full-line quotes
+        r"^♪.*$",        # Music symbols ♪
+        r"^♫.*$",        # Music symbols ♫
+        r"^[A-Z\s]+$",   # ALL CAPS (common in CC)
+        r"^[#@&].*$",    # Lines starting with #, @, &
+        r"^\*.*\*$",     # *text*
+        r"^_._$",        # _text_
+        r"^●.*$",        # ● bullet points
+        r"^►.*$",        # ► arrows
+        r"\bCC\b",       # "CC" as a word
+        r"\bSUBTITLES?\b",  # "SUBTITLE" markers
+    ]
 
-        cleaned_lines = []
-        for line in content.splitlines():
-            stripped_line = line.strip()
-            cleaned_lines.append(stripped_line if stripped_line else "")
+    for line in content.splitlines():
+        stripped = line.strip()
 
-        cleaned_content = "\n".join(cleaned_lines)
+        # Keep SRT metadata (number, timestamps) as-is
+        if stripped.isdigit() or re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", stripped):
+            cleaned_lines.append(line)
+        # Blank out lines that match CC patterns
+        elif any(re.search(pattern, stripped) for pattern in CC_PATTERNS):
+            cleaned_lines.append("")  # Blank line instead of removing
+        # Keep normal dialogue lines
+        else:
+            cleaned_lines.append(line)
 
-        temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
-        temp.write(cleaned_content)
-        temp.close()
+    cleaned_content = "\n".join(cleaned_lines)
 
-        return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
+    # Create and return the cleaned SRT file
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
+    temp.write(cleaned_content)
+    temp.close()
 
-    return redirect('/cc-remover')
+    return send_file(
+        temp.name,
+        as_attachment=True,
+        download_name='cleaned_subtitles.srt',
+        mimetype='text/srt'
+    )
 
 
 # === EXCEL ⇄ SRT CONVERTER ===
