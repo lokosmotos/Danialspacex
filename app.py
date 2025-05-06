@@ -174,27 +174,18 @@ def renumber_subtitles(content):
     return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
-@app.route('/remove-cc', methods=['POST'])
 def remove_cc():
     file = request.files['srtfile']
     if file.filename.endswith('.srt'):
         content = file.read().decode('utf-8')
  
         cc_patterns = [
-            r"\[.*?\]",    # [text]
-        r"\(.*?\)",    # (text)
-        r"<.*?>",      # <text>
-        r'^".*"$',     # Entire line in quotes
-        r"^♪.*$",      # Music symbols
-        r"^♫.*$",      # Music symbols
-        r"^[A-Z\s]+$", # ALL CAPS LINES
-        r"^[#@].*$",   # Lines starting with # or @
-        r"^\*.*\*$",   # *text*
-        r"^_._$",      # _text_
-        r"^●.*$",      # ● bullet points
-        r"^►.*$",      # ► arrows
-        r"\bCC\b",     # Anywhere CC appears as word
-        r"\bSUBTITLE\b", # SUBTITLE markers
+            r"\[.*?\]",
+            r"\(.*?\)",
+            r"<.*?>",
+            r'"[^"]*"'
+            r"^♫.*$"
+            r"^♪.*$"
         ]
  
         for pattern in cc_patterns:
