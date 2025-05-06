@@ -181,10 +181,20 @@ def remove_cc():
         content = file.read().decode('utf-8')
  
         cc_patterns = [
-            r"\[.*?\]",
-            r"\(.*?\)",
-            r"<.*?>",
-            r'"[^"]*"'
+            r"\[.*?\]",    # [text]
+        r"\(.*?\)",    # (text)
+        r"<.*?>",      # <text>
+        r'^".*"$',     # Entire line in quotes
+        r"^♪.*$",      # Music symbols
+        r"^♫.*$",      # Music symbols
+        r"^[A-Z\s]+$", # ALL CAPS LINES
+        r"^[#@].*$",   # Lines starting with # or @
+        r"^\*.*\*$",   # *text*
+        r"^_._$",      # _text_
+        r"^●.*$",      # ● bullet points
+        r"^►.*$",      # ► arrows
+        r"\bCC\b",     # Anywhere CC appears as word
+        r"\bSUBTITLE\b", # SUBTITLE markers
         ]
  
         for pattern in cc_patterns:
