@@ -178,36 +178,38 @@ def renumber_subtitles(content):
 def remove_cc():
     file = request.files['srtfile']
     if file.filename.endswith('.srt'):
-        content = file.read().decode('utf-8')
- 
+        try:
+            content = file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            file.seek(0)
+            content = file.read().decode('ISO-8859-1')
+
         cc_patterns = [
             r"\[.*?\]",
             r"\(.*?\)",
             r"<.*?>",
-            r'"[^"]*"'
+            r'"[^"]*"',
             r"^♪.*$"
         ]
- 
+
         for pattern in cc_patterns:
-            content = re.sub(pattern, '', content, flags=re.DOTALL)
- 
+            content = re.sub(pattern, '', content, flags=re.DOTALL | re.MULTILINE)
+
         cleaned_lines = []
         for line in content.splitlines():
             stripped_line = line.strip()
-            if stripped_line == "":
-                cleaned_lines.append("")
-            else:
-                cleaned_lines.append(stripped_line)
- 
+            cleaned_lines.append(stripped_line if stripped_line else "")
+
         cleaned_content = "\n".join(cleaned_lines)
- 
+
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
         temp.write(cleaned_content)
         temp.close()
- 
+
         return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
- 
+
     return redirect('/cc-remover')
+
 
 # === EXCEL ⇄ SRT CONVERTER ===
 @app.route('/convert-excel-to-srt', methods=['POST'])
