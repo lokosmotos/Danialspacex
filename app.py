@@ -179,64 +179,33 @@ def remove_cc():
     file = request.files['srtfile']
     if file.filename.endswith('.srt'):
         content = file.read().decode('utf-8')
-        cleaned_lines = []
-        
-        # Common CC patterns
-        patterns = [
-            r"\[.*?\]",    # [text]
-            r"\(.*?\)",    # (text)
-            r"<.*?>",      # <text>
-            r'^".*"$',     # Entire line in quotes
-            r"^♪.*$",      # Music symbols
-            r"^♫.*$",      # Music symbols
-            r"^[A-Z\s]+$", # ALL CAPS LINES (common for CC)
-            r"^[#@].*$",   # Lines starting with # or @
-            r"^\*.*\*$",   # *text*
-            r"^_._$",      # _text_
-            r"^●.*$",      # ● bullet points
-            r"^►.*$",      # ► arrows
+ 
+        cc_patterns = [
+            r"\[.*?\]",
+            r"\(.*?\)",
+            r"<.*?>",
+            r'"[^"]*"'
         ]
-        
-        # State tracking
-        in_quoted_block = False
-        current_block = []
-        
+ 
+        for pattern in cc_patterns:
+            content = re.sub(pattern, '', content, flags=re.DOTALL)
+ 
+        cleaned_lines = []
         for line in content.splitlines():
-            stripped = line.strip()
-            
-            # Check if this line starts a quoted block
-            if stripped.startswith('"') and not in_quoted_block:
-                in_quoted_block = True
-                current_block = [line]  # Store original line with whitespace
-                continue
-                
-            # If we're in a quoted block
-            if in_quoted_block:
-                current_block.append(line)
-                # Check if this line ends the quoted block
-                if stripped.endswith('"'):
-                    in_quoted_block = False
-                    # Skip adding this entire block to cleaned lines
-                    current_block = []
-                continue
-                
-            # Regular line processing
-            if any(re.search(pattern, stripped) for pattern in patterns):
-                continue
-                
-            cleaned_lines.append(line)
-            
+            stripped_line = line.strip()
+            if stripped_line == "":
+                cleaned_lines.append("")
+            else:
+                cleaned_lines.append(stripped_line)
+ 
         cleaned_content = "\n".join(cleaned_lines)
-        
-        # Fix numbering in case we removed some entries
-        cleaned_content = renumber_subtitles(cleaned_content)
-        
+ 
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
         temp.write(cleaned_content)
         temp.close()
-        
+ 
         return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
-    
+ 
     return redirect('/cc-remover')
 
 # === EXCEL ⇄ SRT CONVERTER ===
