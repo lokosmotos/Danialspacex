@@ -174,39 +174,86 @@ def renumber_subtitles(content):
     return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
+@app.route('/remove-cc', methods=['POST'])
 def remove_cc():
     file = request.files['srtfile']
     if file.filename.endswith('.srt'):
         content = file.read().decode('utf-8')
- 
-        cc_patterns = [
-            r"\[.*?\]",
-            r"\(.*?\)",
-            r"<.*?>",
-            r'"[^"]*"'
-            r"^♫.*$"
-            r"^♪.*$"
-        ]
- 
-        for pattern in cc_patterns:
-            content = re.sub(pattern, '', content, flags=re.DOTALL)
- 
         cleaned_lines = []
+        
+        # Common CC patterns to remove
+        patterns = [
+            r"\[.*?\]",    # [text]
+            r"\(.*?\)",    # (text)
+            r"<.*?>",      # <text>
+            r'^".*"$',     # Entire line in quotes
+            r"^♪.*$",      # Music symbols
+            r"^♫.*$",      # Music symbols
+            r"^[A-Z\s]+$", # ALL CAPS LINES (common for CC)
+            r"^[#@].*$",   # Lines starting with # or @
+            r"^\*.*\*$",   # *text*
+            r"^_._$",      # _text_
+            r"^●.*$",      # ● bullet points
+            r"^►.*$",      # ► arrows
+            r"\bCC\b",     # Explicit CC markers
+            r"\bSUBTITLES?\b",  # SUBTITLE markers
+        ]
+        
+        # Track if we're in a caption block (between number and empty line)
+        in_caption_block = False
+        current_block = []
+        block_has_content = False
+        
         for line in content.splitlines():
-            stripped_line = line.strip()
-            if stripped_line == "":
-                cleaned_lines.append("")
+            stripped = line.strip()
+            
+            # New caption block starts with a number
+            if not in_caption_block and stripped.isdigit():
+                in_caption_block = True
+                current_block = [line]  # Keep the number line as-is
+                block_has_content = False
+                continue
+                
+            # Inside a caption block
+            if in_caption_block:
+                # Timecode line - keep as-is
+                if re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", stripped):
+                    current_block.append(line)
+                    continue
+                    
+                # Empty line ends the block
+                if not stripped:
+                    in_caption_block = False
+                    # Only keep the block if it had non-CC content
+                    if block_has_content:
+                        cleaned_lines.extend(current_block)
+                        cleaned_lines.append("")  # Add the empty line
+                    continue
+                    
+                # Check if line matches CC patterns
+                if any(re.search(pattern, stripped) for pattern in patterns):
+                    current_block.append("")  # Add empty line as placeholder
+                else:
+                    current_block.append(line)
+                    block_has_content = True
             else:
-                cleaned_lines.append(stripped_line)
- 
+                # Lines outside caption blocks (metadata, etc.) - keep as-is
+                cleaned_lines.append(line)
+        
         cleaned_content = "\n".join(cleaned_lines)
- 
+        
+        # Create temp file
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
         temp.write(cleaned_content)
         temp.close()
- 
-        return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
- 
+        
+        return send_file(
+            temp.name,
+            as_attachment=True,
+            download_name='cleaned_subtitles.srt',
+            mimetype='text/srt'
+        )
+    
     return redirect('/cc-remover')
 
 # === EXCEL ⇄ SRT CONVERTER ===
