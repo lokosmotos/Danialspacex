@@ -174,30 +174,45 @@ def renumber_subtitles(content):
     return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
+# === CC REMOVER ===
 def remove_cc():
     file = request.files['srtfile']
     if file.filename.endswith('.srt'):
         content = file.read().decode('utf-8')
  
-        cc_patterns = [
-            r"\[.*?\]",
-            r"\(.*?\)",
-            r"<.*?>",
-            r'"[^"]*"'
-        ]
+        blocks = content.strip().split('\n\n')
+        cleaned_blocks = []
  
-        for pattern in cc_patterns:
-            content = re.sub(pattern, '', content, flags=re.DOTALL)
+        for block in blocks:
+            lines = block.strip().split('\n')
+            if len(lines) < 3:
+                continue
  
-        cleaned_lines = []
-        for line in content.splitlines():
-            stripped_line = line.strip()
-            if stripped_line == "":
-                cleaned_lines.append("")
-            else:
-                cleaned_lines.append(stripped_line)
+            index = lines[0]
+            timecode = lines[1]
+            text_lines = lines[2:]
  
-        cleaned_content = "\n".join(cleaned_lines)
+            cleaned_text = []
+            for line in text_lines:
+                original_line = line.strip()
+ 
+                # Remove quoted phrases and musical notes
+                line = re.sub(r'♪.*?♪', '', line)
+                line = re.sub(r'"[^"]*"', '', line)
+                line = re.sub(r'\[.*?\]', '', line)
+                line = re.sub(r'\(.*?\)', '', line)
+                line = re.sub(r'<.*?>', '', line)
+ 
+                # Remove if line is now empty or whitespace
+                if line.strip():
+                    cleaned_text.append(line.strip())
+ 
+            # Only include block if there's remaining text
+            if cleaned_text:
+                cleaned_block = f"{index}\n{timecode}\n" + "\n".join(cleaned_text)
+                cleaned_blocks.append(cleaned_block)
+ 
+        cleaned_content = "\n\n".join(cleaned_blocks)
  
         temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
         temp.write(cleaned_content)
