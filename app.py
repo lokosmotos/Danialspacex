@@ -174,82 +174,38 @@ def renumber_subtitles(content):
     return '\n\n'.join(new_blocks)
 
 # === CC REMOVER ===
-@app.route('/remove-cc', methods=['POST'])
 def remove_cc():
     file = request.files['srtfile']
-    if not file.filename.endswith('.srt'):
-        return redirect('/cc-remover')
-
-    content = file.read().decode('utf-8')
-    cleaned_blocks = []
-    current_block = []
-    block_has_content = False
-
-    # Enhanced CC patterns (now handles multi-line quotes and various CC markers)
-    CC_PATTERNS = [
-        r'^[\[\(<【].*[\]\)>】]$',  # Any bracket style (western or asian)
-        r'(^["«»].*)|(.*["«»]$)',  # Quotes at start or end (supports different quote styles)
-        r'^♪.*$',                  # Music symbols
-        r'^♫.*$',
-        r'^[A-Z\s]+$',             # ALL CAPS text
-        r'^[#@&].*$',             # Special character lines
-        r'^\*.*\*$',              # *text*
-        r'^_._$',                  # _text_
-        r'^●.*$',                  # Bullet points
-        r'^►.*$',                  # Arrows
-        r'\bCC\b',                # CC markers
-        r'\bSUBTITLES?\b',        # Subtitle markers
-        r'^\d+%$',                # Percentage indicators
-        r'^[=-]+$',               # Lines with just === or ---
-    ]
-
-    for line in content.splitlines():
-        stripped = line.strip()
-        
-        # New block starts with a number
-        if stripped.isdigit():
-            if current_block and block_has_content:
-                cleaned_blocks.append(current_block)
-            current_block = [line]
-            block_has_content = False
-        # Timestamp line
-        elif re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", stripped):
-            current_block.append(line)
-        # Text content line
-        else:
-            # Check if line should be kept (not a CC line)
-            if stripped and not any(re.search(pattern, stripped, re.IGNORECASE) for pattern in CC_PATTERNS):
-                current_block.append(line)
-                block_has_content = True
-            # Special case: if it's a blank line between text in same block, keep it
-            elif not stripped and block_has_content:
-                current_block.append(line)
-
-    # Add the last block if it has content
-    if current_block and block_has_content:
-        cleaned_blocks.append(current_block)
-
-    # Rebuild the SRT content with only non-empty blocks
-    output_lines = []
-    for i, block in enumerate(cleaned_blocks, 1):
-        output_lines.append(str(i))  # Renumber blocks
-        # Keep all lines except the block number (which we just renumbered)
-        output_lines.extend(block[1:])  
-        output_lines.append("")  # Blank line between blocks
-
-    cleaned_content = "\n".join(output_lines).strip()
-
-    # Create and return the cleaned SRT file
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
-    temp.write(cleaned_content)
-    temp.close()
-
-    return send_file(
-        temp.name,
-        as_attachment=True,
-        download_name='cleaned_subtitles.srt',
-        mimetype='text/srt'
-    )
+    if file.filename.endswith('.srt'):
+        content = file.read().decode('utf-8')
+ 
+        cc_patterns = [
+            r"\[.*?\]",
+            r"\(.*?\)",
+            r"<.*?>",
+            r'"[^"]*"'
+        ]
+ 
+        for pattern in cc_patterns:
+            content = re.sub(pattern, '', content, flags=re.DOTALL)
+ 
+        cleaned_lines = []
+        for line in content.splitlines():
+            stripped_line = line.strip()
+            if stripped_line == "":
+                cleaned_lines.append("")
+            else:
+                cleaned_lines.append(stripped_line)
+ 
+        cleaned_content = "\n".join(cleaned_lines)
+ 
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
+        temp.write(cleaned_content)
+        temp.close()
+ 
+        return send_file(temp.name, as_attachment=True, download_name='cleaned_subtitles.srt')
+ 
+    return redirect('/cc-remover')
 
 
 # === EXCEL ⇄ SRT CONVERTER ===
