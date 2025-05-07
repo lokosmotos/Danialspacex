@@ -181,40 +181,63 @@ def remove_cc():
         return redirect('/cc-remover')
 
     content = file.read().decode('utf-8')
-    cleaned_lines = []
+    cleaned_blocks = []
+    current_block = []
+    block_has_content = False
 
-    # Patterns that identify CC lines (to be blanked out)
+    # Enhanced CC patterns (now handles multi-line quotes and various CC markers)
     CC_PATTERNS = [
-        r"\[.*?\]",      # [text]
-        r"\(.*?\)",      # (text)
-        r"<.*?>",        # <text>
-        r'^".*"$',       # Full-line quotes
-        r"^♪.*$",        # Music symbols ♪
-        r"^♫.*$",        # Music symbols ♫
-        r"^[A-Z\s]+$",   # ALL CAPS (common in CC)
-        r"^[#@&].*$",    # Lines starting with #, @, &
-        r"^\*.*\*$",     # *text*
-        r"^_._$",        # _text_
-        r"^●.*$",        # ● bullet points
-        r"^►.*$",        # ► arrows
-        r"\bCC\b",       # "CC" as a word
-        r"\bSUBTITLES?\b",  # "SUBTITLE" markers
+        r'^[\[\(<【].*[\]\)>】]$',  # Any bracket style (western or asian)
+        r'(^["«»].*)|(.*["«»]$)',  # Quotes at start or end (supports different quote styles)
+        r'^♪.*$',                  # Music symbols
+        r'^♫.*$',
+        r'^[A-Z\s]+$',             # ALL CAPS text
+        r'^[#@&].*$',             # Special character lines
+        r'^\*.*\*$',              # *text*
+        r'^_._$',                  # _text_
+        r'^●.*$',                  # Bullet points
+        r'^►.*$',                  # Arrows
+        r'\bCC\b',                # CC markers
+        r'\bSUBTITLES?\b',        # Subtitle markers
+        r'^\d+%$',                # Percentage indicators
+        r'^[=-]+$',               # Lines with just === or ---
     ]
 
     for line in content.splitlines():
         stripped = line.strip()
-
-        # Keep SRT metadata (number, timestamps) as-is
-        if stripped.isdigit() or re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", stripped):
-            cleaned_lines.append(line)
-        # Blank out lines that match CC patterns
-        elif any(re.search(pattern, stripped) for pattern in CC_PATTERNS):
-            cleaned_lines.append("")  # Blank line instead of removing
-        # Keep normal dialogue lines
+        
+        # New block starts with a number
+        if stripped.isdigit():
+            if current_block and block_has_content:
+                cleaned_blocks.append(current_block)
+            current_block = [line]
+            block_has_content = False
+        # Timestamp line
+        elif re.match(r"\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}", stripped):
+            current_block.append(line)
+        # Text content line
         else:
-            cleaned_lines.append(line)
+            # Check if line should be kept (not a CC line)
+            if stripped and not any(re.search(pattern, stripped, re.IGNORECASE) for pattern in CC_PATTERNS):
+                current_block.append(line)
+                block_has_content = True
+            # Special case: if it's a blank line between text in same block, keep it
+            elif not stripped and block_has_content:
+                current_block.append(line)
 
-    cleaned_content = "\n".join(cleaned_lines)
+    # Add the last block if it has content
+    if current_block and block_has_content:
+        cleaned_blocks.append(current_block)
+
+    # Rebuild the SRT content with only non-empty blocks
+    output_lines = []
+    for i, block in enumerate(cleaned_blocks, 1):
+        output_lines.append(str(i))  # Renumber blocks
+        # Keep all lines except the block number (which we just renumbered)
+        output_lines.extend(block[1:])  
+        output_lines.append("")  # Blank line between blocks
+
+    cleaned_content = "\n".join(output_lines).strip()
 
     # Create and return the cleaned SRT file
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
