@@ -39,7 +39,7 @@ def chinese_converter():
 
 @app.route('/bilingual-splitter')
 def bilingual_splitter():
-    return render_template('bilingual_splitter.html')
+    return render_template('split_bilingual.html')
 
 @app.route('/upload-chinese-srt', methods=['POST'])
 def upload_chinese_srt():
