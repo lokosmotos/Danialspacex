@@ -76,7 +76,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return render_template('split_bilingual.html')
+    return render_template('index.html')
 
 @app.route('/split-bilingual', methods=['GET', 'POST'])
 def split_bilingual():
