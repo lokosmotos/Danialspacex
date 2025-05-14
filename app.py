@@ -64,6 +64,19 @@ def upload_chinese_srt():
                          detected_variant=variant)
 
 # === BILINGUAL SPLITTER ===
+from flask import Flask, render_template, request, send_file, redirect
+from langdetect import detect, LangDetectException
+from io import BytesIO
+import zipfile
+import re
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('split_bilingual.html')
+
 @app.route('/split-bilingual', methods=['GET', 'POST'])
 def split_bilingual():
     if request.method == 'GET':
@@ -74,22 +87,14 @@ def split_bilingual():
         return redirect('/split-bilingual')
 
     content = file.read().decode('utf-8', errors='ignore')
-    
-    eng_blocks, rus_blocks = split_bilingual_subtitles(content)
+    lang_blocks = split_subtitles_by_language(content)
 
-    # Generate the final content for each language
-    eng_content = '\n\n'.join(eng_blocks)
-    rus_content = '\n\n'.join(rus_blocks)
-
-    # Renumber both files sequentially
-    eng_content = renumber_subtitles(eng_content)
-    rus_content = renumber_subtitles(rus_content)
-
-    # Create zip file
+    # Renumber and compile each language file
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
-        zip_file.writestr('english.srt', eng_content.encode('utf-8'))
-        zip_file.writestr('russian.srt', rus_content.encode('utf-8'))
+        for lang, blocks in lang_blocks.items():
+            renumbered = renumber_subtitles('\n\n'.join(blocks))
+            zip_file.writestr(f'{lang}.srt', renumbered.encode('utf-8'))
 
     zip_buffer.seek(0)
     return send_file(
@@ -99,79 +104,69 @@ def split_bilingual():
         download_name='separated_languages.zip'
     )
 
-# === HELPER FUNCTIONS ===
-def is_russian(text):
-    """Improved Russian detection using regex for Cyrillic characters"""
-    return bool(re.search(r'[А-Яа-яЁё]', text))
+# ================================
+# 📦 HELPER FUNCTIONS
+# ================================
 
-def split_bilingual_subtitles(content):
-    """Split bilingual subtitles into separate English and Russian blocks"""
+def is_cjk(text):
+    return bool(re.search(r'[\u4E00-\u9FFF\u3040-\u30FF\u3400-\u4DBF]', text))
+
+def split_subtitles_by_language(content):
+    """Splits a bilingual SRT file into blocks by detected language"""
     blocks = content.strip().split('\n\n')
-    eng_blocks = []
-    rus_blocks = []
-    
+    lang_blocks = {}
+
     for block in blocks:
-        if not block.strip():
+        lines = block.strip().split('\n')
+        if len(lines) < 3:
             continue
-            
-        lines = block.split('\n')
-        if len(lines) < 3:  # Not a valid subtitle block
-            continue
-            
         block_number = lines[0].strip()
         time_line = lines[1].strip()
-        text_lines = [line.strip() for line in lines[2:] if line.strip()]
-        
-        # Separate into language groups
-        eng_lines = []
-        rus_lines = []
-        
+        text_lines = lines[2:]
+
+        text_by_lang = {}
+
         for line in text_lines:
+            line = line.strip()
+            if not line:
+                continue
+
             try:
-                # First try langdetect for more accurate detection
                 lang = detect(line)
-                if lang == 'ru':
-                    rus_lines.append(line)
-                else:
-                    eng_lines.append(line)
             except LangDetectException:
-                # Fallback to character detection if langdetect fails
-                if is_russian(line):
-                    rus_lines.append(line)
+                if is_cjk(line):
+                    lang = 'zh'
                 else:
-                    eng_lines.append(line)
-        
-        # Create separate blocks for each language
-        if eng_lines:
-            eng_block = f"{block_number}\n{time_line}\n" + "\n".join(eng_lines)
-            eng_blocks.append(eng_block)
-            
-        if rus_lines:
-            rus_block = f"{block_number}\n{time_line}\n" + "\n".join(rus_lines)
-            rus_blocks.append(rus_block)
-    
-    return eng_blocks, rus_blocks
+                    lang = 'unknown'
+
+            if lang not in text_by_lang:
+                text_by_lang[lang] = []
+            text_by_lang[lang].append(line)
+
+        for lang, lang_lines in text_by_lang.items():
+            srt_block = f"{block_number}\n{time_line}\n" + "\n".join(lang_lines)
+            if lang not in lang_blocks:
+                lang_blocks[lang] = []
+            lang_blocks[lang].append(srt_block)
+
+    return lang_blocks
 
 def renumber_subtitles(content):
     """Renumber subtitles sequentially from content string"""
-    blocks = content.split('\n\n')
+    blocks = content.strip().split('\n\n')
     new_blocks = []
-    current_num = 1
-    
+    count = 1
     for block in blocks:
-        if not block.strip():
+        lines = block.strip().split('\n')
+        if len(lines) < 2:
             continue
-            
-        lines = block.split('\n')
-        if len(lines) < 3:
-            continue
-            
-        # Keep the time line and text lines, only change the number
-        new_block = f"{current_num}\n{lines[1]}\n" + "\n".join(lines[2:])
+        time_line = lines[1]
+        text_lines = lines[2:]
+        new_block = f"{count}\n{time_line}\n" + "\n".join(text_lines)
         new_blocks.append(new_block)
-        current_num += 1
-    
+        count += 1
     return '\n\n'.join(new_blocks)
+
 
 # === CC REMOVER ===
 # === CC REMOVER ===
