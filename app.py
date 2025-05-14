@@ -37,10 +37,9 @@ def zht_zhs_converter():
 def chinese_converter():
     return render_template('chinese_converter.html')
 
-@app.route('/split-bilingual', methods=['GET', 'POST'])
-def split_bilingual():
-    if request.method == 'GET':
-        return render_template('split_bilingual.html')
+@app.route('/split-bilingual')  # Changed from '/bilingual-splitter'
+def bilingual_splitter():
+    return render_template('split_bilingual.html')
 
 @app.route('/upload-chinese-srt', methods=['POST'])
 def upload_chinese_srt():
