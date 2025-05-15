@@ -37,6 +37,22 @@ def zht_zhs_converter():
 def chinese_converter():
     return render_template('chinese_converter.html')
 
+@app.route('/convert-chinese', methods=['POST'])
+def convert_chinese_form():
+    text = request.form.get('chinese_text')
+    direction = request.form.get('direction', 's2t')
+    
+    if not text:
+        return redirect('/chinese-converter')
+
+    converted_text, diffs = convert_chinese_variant(text, direction)
+
+    return render_template('chinese_converter_result.html',
+                         original_text=text,
+                         converted_text=converted_text,
+                         diffs=diffs,
+                         direction=direction)
+
 @app.route('/bilingual-splitter')
 def bilingual_splitter():
     return render_template('split_bilingual.html')
