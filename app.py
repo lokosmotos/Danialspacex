@@ -394,25 +394,7 @@ def upload_chinese_srt():
                            original=original,
                            converted=converted,
                            highlighted_diffs=highlighted_diffs)
-Then in your Jinja template (converted_chinese_result.html), replace your "Changed Lines" block with:
-html
-Copy
-Edit
-{% if highlighted_diffs %}
-<div class="mt-10">
-    <h3 class="text-lg font-semibold mb-2 text-red-600">🔍 Changed Lines</h3>
-    <div class="bg-gray-900 text-white p-4 border rounded shadow text-sm font-mono">
-        <ul class="space-y-3">
-            {% for item in highlighted_diffs %}
-            <li>
-                <div><strong>Original:</strong> {{ item.original }}</div>
-                <div><strong>Converted:</strong> {{ item.highlighted|safe }}</div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
-{% endif %}
+
 
 # === RUN APPLICATION ===
 if __name__ == '__main__':
