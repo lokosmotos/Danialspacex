@@ -17,10 +17,6 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/tools')
 def tools():
     return render_template('index.html')  # Could be the same as index.html
