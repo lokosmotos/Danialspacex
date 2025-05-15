@@ -81,10 +81,18 @@ def upload_chinese_srt():
     direction = 's2t' if variant == 'zhs' else 't2s'
     converted_text, diffs = convert_chinese_variant(content, direction)
 
+    # Prepare highlighted diffs for template
+    highlighted_diffs = []
+    for original, converted in diffs:
+        highlighted_diffs.append({
+            'original': original,
+            'highlighted': highlight_differences(original, converted)
+        })
+
     return render_template('converted_chinese_result.html',
                          original=content,
                          converted=converted_text,
-                         diffs=diffs,
+                         highlighted_diffs=highlighted_diffs,  # This is critical
                          direction=direction,
                          detected_variant=variant)
 
