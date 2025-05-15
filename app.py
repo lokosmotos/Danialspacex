@@ -363,6 +363,57 @@ def check_profanity(content):
                 })
     return detected
 
+def highlight_differences(orig, conv):
+    result = ""
+    for o, c in zip(orig, conv):
+        if o == c:
+            result += c
+        else:
+            result += f'<span class="text-red-500">{c}</span>'
+    # Add any extra characters in converted if longer
+    if len(conv) > len(orig):
+        result += ''.join(f'<span class="text-red-500">{c}</span>' for c in conv[len(orig):])
+    return result
+
+@app.route('/upload-chinese-srt', methods=['POST'])
+def upload_chinese_srt():
+    # ... your existing code to get original, converted, diffs ...
+
+    # Example: diffs = [(original_line, converted_line), ...]
+    highlighted_diffs = []
+    for original_line, converted_line in diffs:
+        highlighted_line = highlight_differences(original_line, converted_line)
+        highlighted_diffs.append({
+            "original": original_line,
+            "highlighted": highlighted_line
+        })
+
+    return render_template('converted_chinese_result.html',
+                           detected_variant=detected_variant,
+                           direction=direction,
+                           original=original,
+                           converted=converted,
+                           highlighted_diffs=highlighted_diffs)
+Then in your Jinja template (converted_chinese_result.html), replace your "Changed Lines" block with:
+html
+Copy
+Edit
+{% if highlighted_diffs %}
+<div class="mt-10">
+    <h3 class="text-lg font-semibold mb-2 text-red-600">🔍 Changed Lines</h3>
+    <div class="bg-gray-900 text-white p-4 border rounded shadow text-sm font-mono">
+        <ul class="space-y-3">
+            {% for item in highlighted_diffs %}
+            <li>
+                <div><strong>Original:</strong> {{ item.original }}</div>
+                <div><strong>Converted:</strong> {{ item.highlighted|safe }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
 # === RUN APPLICATION ===
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
