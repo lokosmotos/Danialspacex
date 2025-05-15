@@ -375,7 +375,6 @@ def highlight_differences(orig, conv):
         result += ''.join(f'<span class="text-red-500">{c}</span>' for c in conv[len(orig):])
     return result
 
-@app.route('/upload-chinese-srt', methods=['POST'])
 def upload_chinese_srt():
     # ... your existing code to get original, converted, diffs ...
 
