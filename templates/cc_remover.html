@@ -5,72 +5,186 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Remove CC – Danial Space</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --background: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--background);
+      background-image: 
+        radial-gradient(at 80% 0%, hsla(189, 100%, 56%, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.1) 0px, transparent 50%);
+      min-height: 100vh;
+    }
+    
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
     .file-upload {
-      border: 2px dashed #4b5563;
+      border: 2px dashed var(--border);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(30, 41, 59, 0.5);
+    }
+    
+    .file-upload:hover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.1);
+    }
+    
+    .file-upload.active {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.2);
+    }
+    
+    .gradient-text {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
       transition: all 0.3s ease;
     }
-    .file-upload:hover {
-      border-color: #3b82f6;
-      background-color: rgba(59, 130, 246, 0.05);
+    
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
     }
-    .glow {
-      text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+    
+    .btn-primary:active {
+      transform: translateY(0);
     }
-    body {
-      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center text-gray-100">
-  <div class="max-w-md w-full bg-gray-800 rounded-xl shadow-lg p-8 mx-4">
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="card max-w-md w-full rounded-2xl overflow-hidden p-8 relative">
+    <!-- Decorative elements -->
+    <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-indigo-500 opacity-10 blur-3xl"></div>
+    <div class="absolute -bottom-20 -left-20 w-40 h-40 rounded-full bg-blue-500 opacity-10 blur-3xl"></div>
+    
     <!-- Header -->
-    <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 glow">
-        🧹 Remove Closed Captions
+    <div class="text-center mb-8 relative z-10">
+      <div class="w-20 h-20 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold mb-2 gradient-text">
+        Clean Subtitles
       </h1>
-      <p class="text-gray-400">Upload your SRT file to clean CC tags and formatting</p>
+      <p class="text-gray-400">Remove closed captions and formatting from your SRT files</p>
     </div>
 
     <!-- Upload Form -->
-    <form action="/remove-cc" method="post" enctype="multipart/form-data" class="space-y-6">
-      <div class="file-upload rounded-lg p-8 text-center cursor-pointer">
+    <form action="/remove-cc" method="post" enctype="multipart/form-data" class="space-y-6 relative z-10">
+      <div id="uploadContainer" class="file-upload rounded-xl p-8 text-center cursor-pointer transition-all duration-300">
         <input type="file" name="srtfile" id="fileInput" accept=".srt" required class="hidden">
-        <label for="fileInput" class="cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        <label for="fileInput" class="cursor-pointer flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-indigo-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <h3 class="text-lg font-medium">Click to upload SRT file</h3>
-          <p class="text-sm text-gray-400 mt-1">Only .srt files supported</p>
-          <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm"></p>
+          <h3 class="text-lg font-medium text-gray-200">Drag & drop your file</h3>
+          <p class="text-sm text-gray-500 mt-1">or click to browse</p>
+          <p id="fileName" class="text-indigo-300 mt-3 font-medium text-sm flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span id="fileNameText">No file selected</span>
+          </p>
         </label>
       </div>
       
-      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+      <div class="flex items-center text-gray-500 text-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Clean SRT File
+        <span>Supports .srt files up to 10MB</span>
+      </div>
+      
+      <button type="submit" class="btn-primary w-full text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center pulse">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        Process File
       </button>
     </form>
 
     <!-- Back Link -->
-    <div class="mt-6 text-center">
-      <a href="/" class="text-blue-400 hover:text-blue-300 inline-flex items-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    <div class="mt-8 text-center relative z-10">
+      <a href="/" class="text-indigo-400 hover:text-indigo-300 inline-flex items-center text-sm font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        Back to Home
+        Return to dashboard
       </a>
     </div>
   </div>
 
   <script>
-    // Show selected filename
-    document.getElementById('fileInput').addEventListener('change', function(e) {
-      const fileName = e.target.files[0]?.name || 'No file selected';
-      document.getElementById('fileName').textContent = fileName;
+    // Enhanced file upload interaction
+    const fileInput = document.getElementById('fileInput');
+    const uploadContainer = document.getElementById('uploadContainer');
+    const fileNameText = document.getElementById('fileNameText');
+
+    // Drag and drop functionality
+    uploadContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadContainer.classList.add('active');
     });
+
+    uploadContainer.addEventListener('dragleave', () => {
+      uploadContainer.classList.remove('active');
+    });
+
+    uploadContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadContainer.classList.remove('active');
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        updateFileName();
+      }
+    });
+
+    // File selection handler
+    fileInput.addEventListener('change', updateFileName);
+
+    function updateFileName() {
+      if (fileInput.files.length) {
+        const file = fileInput.files[0];
+        fileNameText.textContent = file.name;
+        fileNameText.classList.add('text-indigo-300');
+        fileNameText.classList.remove('text-gray-500');
+      } else {
+        fileNameText.textContent = 'No file selected';
+        fileNameText.classList.remove('text-indigo-300');
+        fileNameText.classList.add('text-gray-500');
+      }
+    }
   </script>
 </body>
 </html>
