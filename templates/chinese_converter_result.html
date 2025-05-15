@@ -3,20 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <title>Chinese Subtitle Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans">
+<body class="bg-gray-900 text-gray-100 font-sans antialiased">
 
-    <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
-        <h1 class="text-2xl font-bold mb-4 text-center">🈷️ Chinese Subtitle Converter</h1>
-        
-        <form action="/upload-chinese-srt" method="POST" enctype="multipart/form-data" class="space-y-4">
-            <label class="block">
-                <span class="text-gray-700 font-medium">Upload your .srt file:</span>
-                <input type="file" name="srtfile" accept=".srt" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" />
-            </label>
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Convert Automatically</button>
-        </form>
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div class="w-full max-w-xl bg-gray-800 rounded-2xl shadow-lg p-8">
+            <h1 class="text-3xl font-extrabold text-center text-blue-400 mb-6">
+                🈷️ Chinese Subtitle Converter
+            </h1>
+
+            <form action="/upload-chinese-srt" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Upload your .srt file</label>
+                    <input 
+                        type="file" 
+                        name="srtfile" 
+                        accept=".srt" 
+                        required 
+                        class="block w-full text-sm text-gray-100 bg-gray-700 border border-gray-600 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none p-2"
+                    />
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="w-full py-3 text-white bg-blue-600 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+                >
+                    Convert Automatically
+                </button>
+            </form>
+        </div>
     </div>
 
 </body>
