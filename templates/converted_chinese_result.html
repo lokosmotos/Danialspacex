@@ -41,25 +41,22 @@
             </button>
         </form>
 
-        {% if diffs %}
+        {{% if diffs %}
 <div class="mt-10">
     <h3 class="text-lg font-semibold mb-4 text-red-400">🔍 Changed Lines</h3>
-    <div class="bg-gray-700 p-4 border border-gray-600 rounded-xl shadow text-sm space-y-2">
-        <div class="grid grid-cols-1 gap-2">
-            {% for original_line, converted_line in diffs %}
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 p-3 rounded-lg">
-                <div class="text-gray-400 sm:w-1/2 truncate">
-                    <span class="font-medium text-gray-500">Original:</span> {{ original_line }}
-                </div>
-                <div class="text-green-400 sm:w-1/2 truncate sm:text-right mt-1 sm:mt-0">
-                    <span class="font-medium text-green-500">→ Converted:</span> {{ converted_line }}
-                </div>
-            </div>
-            {% endfor %}
+    <div class="bg-gray-800 p-4 border border-gray-700 rounded-xl shadow text-sm text-gray-100 space-y-4 font-mono">
+        {% for original_line, converted_line in diffs %}
+        <div class="bg-gray-900 p-3 rounded-md">
+            <pre class="whitespace-pre-wrap leading-snug">
+Original:   {{ original_line }}
+Converted:  {{ converted_line }}
+            </pre>
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endif %}
+
 
     </div>
 
