@@ -46,10 +46,10 @@
     <h3 class="text-lg font-semibold mb-2 text-red-600">🔍 Changed Lines</h3>
     <div class="bg-gray-900 text-white p-4 border rounded shadow text-sm font-mono">
         <ul class="space-y-3">
-            {% for item in highlighted_diffs %}
+            {% for diff in highlighted_diffs %}
             <li>
-                <div><strong>Original:</strong> {{ item.original }}</div>
-                <div><strong>Converted:</strong> {{ item.highlighted|safe }}</div>
+                <div><strong>Original:</strong> {{ diff.original }}</div>
+                <div><strong>Converted:</strong> {{ diff.highlighted|safe }}</div>
             </li>
             {% endfor %}
         </ul>
