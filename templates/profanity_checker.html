@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRT Profanity Checker | Danial Space</title>
+    <title>SRT Profanity Checker | Enhanced Version</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         .file-upload {
@@ -49,14 +49,30 @@
         .severity-high { background-color: rgba(239, 68, 68, 0.1); }
         .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
         .severity-low { background-color: rgba(59, 130, 246, 0.1); }
+        .replacement-input {
+            resize: vertical;
+            min-height: 60px;
+            transition: all 0.2s ease;
+        }
+        .replacement-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+        }
+        .collapsed .replacement-input {
+            height: 40px;
+            overflow: hidden;
+        }
+        .timecode-btn:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
-            <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language</p>
+            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 Enhanced SRT Profanity Checker</h1>
+            <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language with timecode support</p>
         </div>
 
         <!-- Upload Section -->
@@ -78,14 +94,22 @@
                 <div class="bg-gray-700/30 p-4 rounded-lg">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-semibold text-red-400">Profanity Words to Detect</h3>
-                        <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
-                            ↻ Refresh List
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                ↻ Refresh List
+                            </button>
+                            <button type="button" id="showWordListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                👁 Show List
+                            </button>
+                        </div>
                     </div>
                     <div id="profanityListStatus" class="text-sm mb-2">
                         Loading profanity list from static/profanity_list.json...
                     </div>
-                    <div id="customProfanityContainer" class="hidden">
+                    <div id="wordListPopup" class="hidden bg-gray-700 p-3 rounded-lg mt-2 max-h-40 overflow-y-auto">
+                        <div id="wordListContent" class="text-sm font-mono"></div>
+                    </div>
+                    <div id="customProfanityContainer" class="mt-3">
                         <textarea id="customProfanityList" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-24 focus:border-blue-500 focus:outline-none text-sm" placeholder="Add additional words (comma separated)"></textarea>
                         <p class="text-xs text-gray-400 mt-1">Additional words to detect beyond the loaded list</p>
                     </div>
@@ -108,7 +132,7 @@
                 <div class="mt-3 h-2 w-full bg-gray-700 rounded-full overflow-hidden">
                     <div id="progressBar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
                 </div>
-                <p id="progressText" class="text-sm text-gray-400 mt-1">0% analyzed</p>
+                <p id="progressText" class="text-sm text-gray-400 mt-1">0% analyzed (0/0 blocks)</p>
             </div>
             
             <div class="text-center mb-4">
@@ -134,14 +158,34 @@
                 </span>
             </div>
             
+            <div class="mb-4 flex flex-wrap gap-2">
+                <button id="expandAllBtn" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm">
+                    Expand All
+                </button>
+                <button id="collapseAllBtn" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm">
+                    Collapse All
+                </button>
+                <button id="showOnlyHighBtn" class="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 rounded text-sm">
+                    Show Only High Severity
+                </button>
+                <button id="showAllBtn" class="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 rounded text-sm">
+                    Show All
+                </button>
+                <button id="bulkCensorBtn" class="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/30 rounded text-sm">
+                    Bulk Censor All
+                </button>
+            </div>
+            
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr class="border-b border-gray-700 text-left">
                             <th class="pb-3 font-medium">Line</th>
+                            <th class="pb-3 font-medium">Timecode</th>
                             <th class="pb-3 font-medium">Original Text</th>
                             <th class="pb-3 font-medium">Replacement</th>
                             <th class="pb-3 font-medium">Severity</th>
+                            <th class="pb-3 font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
@@ -196,6 +240,9 @@
             fileName: document.getElementById('fileName'),
             analyzeBtn: document.getElementById('analyzeBtn'),
             refreshBtn: document.getElementById('refreshListBtn'),
+            showWordListBtn: document.getElementById('showWordListBtn'),
+            wordListPopup: document.getElementById('wordListPopup'),
+            wordListContent: document.getElementById('wordListContent'),
             loadingGame: document.getElementById('loadingGame'),
             gameBoard: document.getElementById('gameBoard'),
             progressBar: document.getElementById('progressBar'),
@@ -209,7 +256,12 @@
             customWordsInput: document.getElementById('customProfanityList'),
             downloadBtn: document.getElementById('downloadBtn'),
             autoReplaceBtn: document.getElementById('autoReplaceBtn'),
-            skipGameBtn: document.getElementById('skipGameBtn')
+            skipGameBtn: document.getElementById('skipGameBtn'),
+            expandAllBtn: document.getElementById('expandAllBtn'),
+            collapseAllBtn: document.getElementById('collapseAllBtn'),
+            showOnlyHighBtn: document.getElementById('showOnlyHighBtn'),
+            showAllBtn: document.getElementById('showAllBtn'),
+            bulkCensorBtn: document.getElementById('bulkCensorBtn')
         };
 
         // ========== Initialization ==========
@@ -230,14 +282,20 @@
                 
                 state.profanityWords = Array.isArray(data) ? data : data.words;
                 showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
+                updateWordListDisplay();
                 
             } catch (error) {
                 console.error('Loading failed:', error);
                 state.profanityWords = DEFAULT_WORDS;
                 showErrorMessage(`Using default list (${DEFAULT_WORDS.length} words)`);
+                updateWordListDisplay();
             }
             
             elements.customContainer.classList.remove('hidden');
+        }
+
+        function updateWordListDisplay() {
+            elements.wordListContent.textContent = state.profanityWords.join(', ');
         }
 
         function validateProfanityList(data) {
@@ -289,7 +347,10 @@
                         text: block.text,
                         modifiedText: modifiedText,
                         profanities: profanities,
-                        severity: determineSeverity(profanities)
+                        severity: determineSeverity(profanities),
+                        timecodes: block.timecodes,
+                        startTime: block.startTime,
+                        endTime: block.endTime
                     });
                 }
             });
@@ -297,76 +358,68 @@
 
         function parseSRT(content) {
             const blocks = [];
-            let currentBlock = null;
-            const lines = content.split('\n');
+            const blockRegex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\n((?:.+\n)+)\n/g;
+            let match;
             
-            for (const line of lines) {
-                if (/^\d+$/.test(line.trim())) {
-                    currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
-                } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
-                    currentBlock.timecodes = line.trim();
-                } else if (currentBlock) {
-                    if (line.trim() === '') {
-                        blocks.push(currentBlock);
-                        currentBlock = null;
-                    } else {
-                        currentBlock.text += (currentBlock.text ? '\n' : '') + line.trim();
-                    }
-                }
+            while ((match = blockRegex.exec(content)) !== null) {
+                blocks.push({
+                    number: parseInt(match[1]),
+                    timecodes: match[2],
+                    startTime: match[2].split(' --> ')[0],
+                    endTime: match[2].split(' --> ')[1],
+                    text: match[3].trim()
+                });
             }
             
             return blocks;
         }
 
         function findProfanities(text, wordList) {
+            // Create a single regex pattern for all words
+            const pattern = new RegExp(
+                `\\b(${wordList.map(w => escapeRegExp(w)).join('|')})\\b`, 
+                'gi'
+            );
+            
             const found = [];
-            wordList.forEach(word => {
-                // Use word boundaries to match whole words only
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    found.push({
-                        word: match[0],
-                        index: match.index,
-                        length: match[0].length
-                    });
-                }
-            });
+            let match;
+            
+            while ((match = pattern.exec(text)) !== null) {
+                found.push({
+                    word: match[0],
+                    index: match.index,
+                    length: match[0].length,
+                    original: text.substring(match.index, match.index + match[0].length)
+                });
+            }
+            
             return found;
         }
 
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
         function determineSeverity(profanities) {
-            // Simple severity determination - can be enhanced
-            return 'high';
+            const severityScores = {
+                'cunt': 3, 'fuck': 3, 'nigger': 3,
+                'bitch': 2, 'asshole': 2, 'dickhead': 2,
+                'hell': 1, 'damn': 1, 'crap': 1
+            };
+            
+            const totalScore = profanities.reduce((sum, p) => {
+                return sum + (severityScores[p.word.toLowerCase()] || 1);
+            }, 0);
+            
+            if (totalScore >= 5) return 'high';
+            if (totalScore >= 3) return 'medium';
+            return 'low';
         }
 
         function showResults() {
             elements.resultsBody.innerHTML = '';
             state.detectedProfanities.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
-                
-                let highlightedText = item.text;
-                item.profanities.forEach(p => {
-                    highlightedText = highlightedText.substring(0, p.index) + 
-                        `<span class="profanity-highlight">${highlightedText.substring(p.index, p.index + p.length)}</span>` + 
-                        highlightedText.substring(p.index + p.length);
-                });
-                
-                row.innerHTML = `
-                    <td class="py-3 font-mono">${item.blockNumber}</td>
-                    <td class="py-3">${highlightedText}</td>
-                    <td class="py-3">
-                        <input type="text" data-block="${item.blockNumber}" 
-                               value="${item.modifiedText}" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
-                    </td>
-                    <td class="py-3 text-center">
-                        <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' : 
-                             item.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}">
-                            ${item.severity || 'high'}
-                        </span>
-                    </td>
-                `;
+                const row = createResultRow(item);
                 elements.resultsBody.appendChild(row);
             });
             
@@ -377,6 +430,63 @@
                 elements.loadingGame.classList.add('hidden');
                 elements.resultsSection.classList.remove('hidden');
             }, 300);
+        }
+
+        function createResultRow(item) {
+            const row = document.createElement('tr');
+            row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
+            
+            // Format time as HH:MM:SS
+            const formatTime = (timeStr) => {
+                const [hms, ms] = timeStr.split(',');
+                return hms.split(':').map(t => t.padStart(2, '0')).join(':');
+            };
+
+            row.innerHTML = `
+                <td class="py-3 font-mono">${item.blockNumber}</td>
+                <td class="py-3 font-mono whitespace-nowrap">
+                    <button class="timecode-btn text-blue-400 hover:text-blue-300"
+                            data-start="${item.startTime}"
+                            data-end="${item.endTime}">
+                        ${formatTime(item.startTime)} → ${formatTime(item.endTime)}
+                    </button>
+                </td>
+                <td class="py-3">${highlightProfanities(item.text, item.profanities)}</td>
+                <td class="py-3">
+                    <textarea data-block="${item.blockNumber}" 
+                           class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full h-20"
+                           >${item.modifiedText}</textarea>
+                </td>
+                <td class="py-3 text-center">
+                    <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1"
+                            data-block="${item.blockNumber}"
+                            value="${item.severity}">
+                        <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
+                        <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
+                    </select>
+                </td>
+                <td class="py-3 text-center">
+                    <button class="revert-btn px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                            data-block="${item.blockNumber}">
+                        Revert
+                    </button>
+                </td>
+            `;
+            return row;
+        }
+
+        function highlightProfanities(text, profanities) {
+            // Sort by index in descending order to avoid replacement conflicts
+            profanities.sort((a, b) => b.index - a.index);
+            
+            profanities.forEach(p => {
+                text = text.substring(0, p.index) + 
+                       `<span class="profanity-highlight" title="${p.word}">${text.substring(p.index, p.index + p.length)}</span>` + 
+                       text.substring(p.index + p.length);
+            });
+            
+            return text;
         }
 
         function generateGameBoard() {
@@ -427,7 +537,7 @@
                 const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
                 output += `${block.number}\n${block.timecodes}\n`;
                 output += `${detectedItem ? 
-                          document.querySelector(`input[data-block="${block.number}"]`).value : 
+                          document.querySelector(`textarea[data-block="${block.number}"]`).value : 
                           block.text}\n\n`;
             });
             
@@ -456,6 +566,20 @@
             });
         }
 
+        function bulkReplaceAll() {
+            document.querySelectorAll('.replacement-input').forEach(input => {
+                const blockNumber = input.dataset.block;
+                const detectedItem = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                if (detectedItem) {
+                    input.value = detectedItem.profanities.reduce((text, p) => {
+                        return text.substring(0, p.index) + 
+                               '[CENSORED]' + 
+                               text.substring(p.index + p.length);
+                    }, detectedItem.text);
+                }
+            });
+        }
+
         function skipLoadingGame() {
             clearInterval(state.game.interval);
             state.game.progress = 100;
@@ -464,17 +588,24 @@
         }
 
         function simulateProgress(onComplete) {
+            const blocks = parseSRT(state.originalContent);
+            const totalBlocks = blocks.length;
+            let processedBlocks = 0;
+            
             state.game.interval = setInterval(() => {
-                state.game.progress += Math.random() * 5;
-                if (state.game.progress > 100) {
-                    state.game.progress = 100;
+                // Real progress based on actual processing
+                processedBlocks = Math.min(processedBlocks + 1, totalBlocks);
+                const progress = (processedBlocks / totalBlocks) * 100;
+                
+                elements.progressBar.style.width = `${progress}%`;
+                elements.progressText.textContent = 
+                    `${Math.floor(progress)}% analyzed (${processedBlocks}/${totalBlocks} blocks)`;
+                    
+                if (processedBlocks >= totalBlocks) {
                     clearInterval(state.game.interval);
                     onComplete();
                 }
-                
-                elements.progressBar.style.width = `${state.game.progress}%`;
-                elements.progressText.textContent = `${Math.floor(state.game.progress)}% analyzed`;
-            }, 100);
+            }, 50);
         }
 
         function startLoadingAnimation() {
@@ -487,12 +618,96 @@
         }
 
         function setupEventListeners() {
+            // File handling
             elements.fileInput.addEventListener('change', updateFileName);
             elements.analyzeBtn.addEventListener('click', analyzeContent);
+            
+            // Word list management
             elements.refreshBtn.addEventListener('click', loadProfanityList);
+            elements.showWordListBtn.addEventListener('click', () => {
+                elements.wordListPopup.classList.toggle('hidden');
+            });
+            
+            // Results actions
             elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             elements.autoReplaceBtn.addEventListener('click', autoReplaceAll);
+            elements.bulkCensorBtn.addEventListener('click', bulkReplaceAll);
             elements.skipGameBtn.addEventListener('click', skipLoadingGame);
+            
+            // Row actions
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('revert-btn')) {
+                    const blockNumber = e.target.dataset.block;
+                    revertChanges(blockNumber);
+                }
+                
+                if (e.target.classList.contains('timecode-btn')) {
+                    const start = e.target.dataset.start;
+                    const end = e.target.dataset.end;
+                    alert(`Would normally seek video to: ${start} - ${end}`);
+                    // In a real implementation, this would control your video player
+                }
+            });
+            
+            // Severity changes
+            document.addEventListener('change', (e) => {
+                if (e.target.classList.contains('severity-select')) {
+                    const blockNumber = e.target.dataset.block;
+                    updateSeverity(blockNumber, e.target.value);
+                }
+            });
+            
+            // View controls
+            elements.expandAllBtn.addEventListener('click', () => {
+                document.querySelectorAll('.replacement-input').forEach(input => {
+                    input.style.height = '80px';
+                    input.closest('tr').classList.remove('collapsed');
+                });
+            });
+            
+            elements.collapseAllBtn.addEventListener('click', () => {
+                document.querySelectorAll('.replacement-input').forEach(input => {
+                    input.style.height = '40px';
+                    input.closest('tr').classList.add('collapsed');
+                });
+            });
+            
+            elements.showOnlyHighBtn.addEventListener('click', () => {
+                document.querySelectorAll('#resultsBody tr').forEach(row => {
+                    row.style.display = row.classList.contains('severity-high') ? '' : 'none';
+                });
+            });
+            
+            elements.showAllBtn.addEventListener('click', () => {
+                document.querySelectorAll('#resultsBody tr').forEach(row => {
+                    row.style.display = '';
+                });
+            });
+        }
+
+        function revertChanges(blockNumber) {
+            const originalItem = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            if (!originalItem) return;
+            
+            const textarea = document.querySelector(`textarea[data-block="${blockNumber}"]`);
+            textarea.value = originalItem.text;
+            
+            // Update severity to original
+            const select = document.querySelector(`select[data-block="${blockNumber}"]`);
+            select.value = originalItem.severity;
+            
+            // Update row styling
+            const row = textarea.closest('tr');
+            row.className = originalItem.severity ? SEVERITY_LEVELS[originalItem.severity].class : '';
+        }
+
+        function updateSeverity(blockNumber, severity) {
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            if (item) item.severity = severity;
+            
+            // Update row styling
+            const row = document.querySelector(`textarea[data-block="${blockNumber}"]`).closest('tr');
+            row.className = severity ? SEVERITY_LEVELS[severity].class : '';
         }
 
         function showSuccessMessage(message) {
