@@ -295,45 +295,49 @@
             });
         }
 
-        function parseSRT(content) {
-            const blocks = [];
-            let currentBlock = null;
-            const lines = content.split('\n');
-            
-            for (const line of lines) {
-                if (/^\d+$/.test(line.trim())) {
-                    currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
-                } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
-                    currentBlock.timecodes = line.trim();
-                } else if (currentBlock) {
-                    if (line.trim() === '') {
-                        blocks.push(currentBlock);
-                        currentBlock = null;
-                    } else {
-                        currentBlock.text += (currentBlock.text ? '\n' : '') + line.trim();
-                    }
-                }
-            }
-            
-            return blocks;
-        }
+        // Current parser can miss some edge cases
+function parseSRT(content) {
+    const blocks = [];
+    // More robust regex-based parsing
+    const blockRegex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\n((?:.+\n)+)\n/g;
+    let match;
+    
+    while ((match = blockRegex.exec(content)) !== null) {
+        blocks.push({
+            number: parseInt(match[1]),
+            timecodes: match[2],
+            text: match[3].trim()
+        });
+    }
+    
+    return blocks;
+}
 
         function findProfanities(text, wordList) {
-            const found = [];
-            wordList.forEach(word => {
-                // Use word boundaries to match whole words only
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                let match;
-                while ((match = regex.exec(text)) !== null) {
-                    found.push({
-                        word: match[0],
-                        index: match.index,
-                        length: match[0].length
-                    });
-                }
-            });
-            return found;
-        }
+    // Create a single regex pattern for all words
+    const pattern = new RegExp(
+        `\\b(${wordList.map(w => escapeRegExp(w)).join('|')})\\b`, 
+        'gi'
+    );
+    
+    const found = [];
+    let match;
+    
+    while ((match = pattern.exec(text)) !== null) {
+        found.push({
+            word: match[0],
+            index: match.index,
+            length: match[0].length,
+            original: text.substring(match.index, match.index + match[0].length)
+        });
+    }
+    
+    return found;
+}
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
         function determineSeverity(profanities) {
             // Simple severity determination - can be enhanced
@@ -464,18 +468,25 @@
         }
 
         function simulateProgress(onComplete) {
-            state.game.interval = setInterval(() => {
-                state.game.progress += Math.random() * 5;
-                if (state.game.progress > 100) {
-                    state.game.progress = 100;
-                    clearInterval(state.game.interval);
-                    onComplete();
-                }
-                
-                elements.progressBar.style.width = `${state.game.progress}%`;
-                elements.progressText.textContent = `${Math.floor(state.game.progress)}% analyzed`;
-            }, 100);
+    let progress = 0;
+    const totalBlocks = parseSRT(state.originalContent).length;
+    let processedBlocks = 0;
+    
+    const interval = setInterval(() => {
+        // Real progress based on actual processing
+        processedBlocks += 1;
+        progress = Math.min((processedBlocks / totalBlocks) * 100, 100);
+        
+        elements.progressBar.style.width = `${progress}%`;
+        elements.progressText.textContent = 
+            `${Math.floor(progress)}% analyzed (${processedBlocks}/${totalBlocks} blocks)`;
+            
+        if (processedBlocks >= totalBlocks) {
+            clearInterval(interval);
+            onComplete();
         }
+    }, 50);
+}
 
         function startLoadingAnimation() {
             state.game.score = 0;
