@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SRT Profanity Checker | Danial Space</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
         .file-upload {
             border: 2px dashed #4b5563;
@@ -19,6 +20,7 @@
             padding: 0 2px;
             border-radius: 2px;
             position: relative;
+            cursor: pointer;
         }
         .profanity-highlight::after {
             content: "⚠";
@@ -49,14 +51,43 @@
         .severity-high { background-color: rgba(239, 68, 68, 0.1); }
         .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
         .severity-low { background-color: rgba(59, 130, 246, 0.1); }
+        .replacement-input {
+            transition: all 0.3s ease;
+        }
+        .replacement-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .reset-btn, .quick-replace-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        tr:hover .reset-btn, tr:hover .quick-replace-btn {
+            opacity: 1;
+        }
+        .suggestion-dropdown {
+            position: absolute;
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            z-index: 10;
+            min-width: 120px;
+        }
+        .suggestion-dropdown div {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .suggestion-dropdown div:hover {
+            background: #374151;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-5xl mx-auto">
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
-            <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language</p>
+            <p class="text-gray-400">Upload your SRT file to detect and edit inappropriate language</p>
         </div>
 
         <!-- Upload Section -->
@@ -86,8 +117,8 @@
                         Loading profanity list from static/profanity_list.json...
                     </div>
                     <div id="customProfanityContainer" class="hidden">
-                        <textarea id="customProfanityList" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-24 focus:border-blue-500 focus:outline-none text-sm" placeholder="Add additional words (comma separated)"></textarea>
-                        <p class="text-xs text-gray-400 mt-1">Additional words to detect beyond the loaded list</p>
+                        <textarea id="customProfanityList" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-24 focus:border-blue-500 focus:outline-none text-sm" placeholder="Add additional words (comma separated, format: word:severity e.g., 'damn:medium')"></textarea>
+                        <p class="text-xs text-gray-400 mt-1">Format: word:severity (e.g., damn:medium). Default severity is high.</p>
                     </div>
                 </div>
                
@@ -133,15 +164,32 @@
                     0 found
                 </span>
             </div>
-           
+
+            <!-- Batch Replace -->
+            <div class="mb-6 bg-gray-700/30 p-4 rounded-lg">
+                <h3 class="font-semibold text-blue-400 mb-2">Batch Replace</h3>
+                <div class="flex gap-2">
+                    <input id="batchWord" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 flex-1" placeholder="Word to replace">
+                    <input id="batchReplacement" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 flex-1" placeholder="Replacement text">
+                    <button id="batchReplaceBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded">Apply</button>
+                </div>
+            </div>
+
+            <!-- Analytics Chart -->
+            <div class="mb-6">
+                <canvas id="severityChart" class="max-h-64"></canvas>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead>
                         <tr class="border-b border-gray-700 text-left">
                             <th class="pb-3 font-medium">Line</th>
+                            <th class="pb-3 font-medium">Timecode</th>
                             <th class="pb-3 font-medium">Original Text</th>
                             <th class="pb-3 font-medium">Replacement</th>
                             <th class="pb-3 font-medium">Severity</th>
+                            <th class="pb-3 font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
@@ -149,6 +197,12 @@
             </div>
            
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button id="undoBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                    </svg>
+                    Undo Last Edit
+                </button>
                 <button id="downloadBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -165,11 +219,37 @@
     <script>
         // ========== Configuration ==========
         const DEFAULT_WORDS = [
-            'hell', 'damn', 'bitch', 'ass', 'fuck',
-            'shit', 'crap', 'asshole', 'bastard',
-            'dick', 'piss', 'cunt', 'dickhead'
+            { word: 'hell', severity: 'low' },
+            { word: 'damn', severity: 'low' },
+            { word: 'bitch', severity: 'medium' },
+            { word: 'ass', severity: 'medium' },
+            { word: 'fuck', severity: 'high' },
+            { word: 'shit', severity: 'high' },
+            { word: 'crap', severity: 'low' },
+            { word: 'asshole', severity: 'medium' },
+            { word: 'bastard', severity: 'medium' },
+            { word: 'dick', severity: 'medium' },
+            { word: 'piss', severity: 'medium' },
+            { word: 'cunt', severity: 'high' },
+            { word: 'dickhead', severity: 'medium' }
         ];
-       
+
+        const SUGGESTED_REPLACEMENTS = {
+            'hell': ['heck', 'hades', '[CENSORED]'],
+            'damn': ['darn', 'shoot', '[CENSORED]'],
+            'bitch': ['jerk', 'brat', '[CENSORED]'],
+            'ass': ['butt', 'rear', '[CENSORED]'],
+            'fuck': ['fudge', 'frick', '[CENSORED]'],
+            'shit': ['poop', 'crud', '[CENSORED]'],
+            'crap': ['crud', 'junk', '[CENSORED]'],
+            'asshole': ['jerk', 'fool', '[CENSORED]'],
+            'bastard': ['jerk', 'brat', '[CENSORED]'],
+            'dick': ['jerk', 'fool', '[CENSORED]'],
+            'piss': ['pee', 'tinkle', '[CENSORED]'],
+            'cunt': ['jerk', '[CENSORED]'],
+            'dickhead': ['jerk', 'fool', '[CENSORED]']
+        };
+
         const SEVERITY_LEVELS = {
             high: { class: 'severity-high', default: true },
             medium: { class: 'severity-medium' },
@@ -183,6 +263,7 @@
             detectedProfanities: [],
             originalContent: '',
             modifiedContent: '',
+            editHistory: [],
             game: {
                 score: 0,
                 progress: 0,
@@ -209,6 +290,10 @@
             customWordsInput: document.getElementById('customProfanityList'),
             downloadBtn: document.getElementById('downloadBtn'),
             autoReplaceBtn: document.getElementById('autoReplaceBtn'),
+            batchReplaceBtn: document.getElementById('batchReplaceBtn'),
+            batchWord: document.getElementById('batchWord'),
+            batchReplacement: document.getElementById('batchReplacement'),
+            undoBtn: document.getElementById('undoBtn'),
             skipGameBtn: document.getElementById('skipGameBtn')
         };
 
@@ -219,6 +304,44 @@
             generateGameBoard();
         });
 
+        // ========== Chart Generation ==========
+        function generateSeverityChart() {
+            const severityCounts = { high: 0, medium: 0, low: 0 };
+            state.detectedProfanities.forEach(item => {
+                severityCounts[item.severity]++;
+            });
+
+            ```chartjs
+            {
+                "type": "bar",
+                "data": {
+                    "labels": ["High", "Medium", "Low"],
+                    "datasets": [{
+                        "label": "Profanity Severity",
+                        "data": [${severityCounts.high}, ${severityCounts.medium}, ${severityCounts.low}],
+                        "backgroundColor": ["#ef4444", "#eab308", "#3b82f6"],
+                        "borderColor": ["#b91c1c", "#b45309", "#1d4ed8"],
+                        "borderWidth": 1
+                    }]
+                },
+                "options": {
+                    "scales": {
+                        "y": {
+                            "beginAtZero": true,
+                            "title": { "display": true, "text": "Count" }
+                        },
+                        "x": {
+                            "title": { "display": true, "text": "Severity" }
+                        }
+                    },
+                    "plugins": {
+                        "legend": { "display": false }
+                    }
+                }
+            }
+            ```
+        }
+
         // ========== Core Functions ==========
         async function loadProfanityList() {
             try {
@@ -228,7 +351,7 @@
                 const data = await response.json();
                 if (!validateProfanityList(data)) throw new Error('Invalid JSON format');
                
-                state.profanityWords = Array.isArray(data) ? data : data.words;
+                state.profanityWords = Array.isArray(data) ? data.map(word => ({ word, severity: 'high' })) : data.words;
                 showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
                
             } catch (error) {
@@ -247,10 +370,13 @@
         function getCombinedWordList() {
             const customWords = elements.customWordsInput.value
                 .split(',')
-                .map(w => w.trim())
-                .filter(w => w);
+                .map(w => {
+                    const [word, severity = 'high'] = w.trim().split(':');
+                    return { word, severity: SEVERITY_LEVELS[severity] ? severity : 'high' };
+                })
+                .filter(w => w.word);
            
-            return [...new Set([...state.profanityWords, ...customWords])];
+            return [...new Set([...state.profanityWords, ...customWords].map(w => JSON.stringify(w)))].map(JSON.parse);
         }
 
         // ========== SRT Processing ==========
@@ -263,6 +389,7 @@
             simulateProgress(() => {
                 processSRTContent();
                 showResults();
+                generateSeverityChart();
             });
         }
 
@@ -286,10 +413,11 @@
                    
                     state.detectedProfanities.push({
                         blockNumber: block.number,
+                        timecodes: block.timecodes,
                         text: block.text,
                         modifiedText: modifiedText,
                         profanities: profanities,
-                        severity: determineSeverity(profanities)
+                        severity: determineSeverity(profanities, combinedWords)
                     });
                 }
             });
@@ -302,12 +430,13 @@
            
             for (const line of lines) {
                 if (/^\d+$/.test(line.trim())) {
+                    if (currentBlock) blocks.push(currentBlock);
                     currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
                 } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
                     currentBlock.timecodes = line.trim();
                 } else if (currentBlock) {
                     if (line.trim() === '') {
-                        blocks.push(currentBlock);
+                        if (currentBlock.text) blocks.push(currentBlock);
                         currentBlock = null;
                     } else {
                         currentBlock.text += (currentBlock.text ? '\n' : '') + line.trim();
@@ -315,29 +444,34 @@
                 }
             }
            
+            if (currentBlock?.text) blocks.push(currentBlock);
+           
             return blocks;
         }
 
         function findProfanities(text, wordList) {
             const found = [];
-            wordList.forEach(word => {
-                // Use word boundaries to match whole words only
+            wordList.forEach(({ word, severity }) => {
                 const regex = new RegExp(`\\b${word}\\b`, 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     found.push({
                         word: match[0],
                         index: match.index,
-                        length: match[0].length
+                        length: match[0].length,
+                        severity
                     });
                 }
             });
             return found;
         }
 
-        function determineSeverity(profanities) {
-            // Simple severity determination - can be enhanced
-            return 'high';
+        function determineSeverity(profanities, wordList) {
+            const highestSeverity = profanities.reduce((max, p) => {
+                const wordSeverity = wordList.find(w => w.word.toLowerCase() === p.word.toLowerCase())?.severity || 'high';
+                return ['high', 'medium', 'low'].indexOf(wordSeverity) < ['high', 'medium', 'low'].indexOf(max) ? wordSeverity : max;
+            }, 'low');
+            return highestSeverity;
         }
 
         function showResults() {
@@ -349,25 +483,91 @@
                 let highlightedText = item.text;
                 item.profanities.forEach(p => {
                     highlightedText = highlightedText.substring(0, p.index) +
-                        `<span class="profanity-highlight">${highlightedText.substring(p.index, p.index + p.length)}</span>` +
+                        `<span class="profanity-highlight" data-word="${p.word}" data-index="${p.index}">${highlightedText.substring(p.index, p.index + p.length)}</span>` +
                         highlightedText.substring(p.index + p.length);
                 });
                
                 row.innerHTML = `
                     <td class="py-3 font-mono">${item.blockNumber}</td>
+                    <td class="py-3 font-mono">${item.timecodes}</td>
                     <td class="py-3">${highlightedText}</td>
-                    <td class="py-3">
+                    <td class="py-3 relative">
                         <input type="text" data-block="${item.blockNumber}"
-                               value="${item.modifiedText}" class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full">
+                               value="${item.modifiedText}" 
+                               class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full"
+                               data-original="${item.modifiedText}">
                     </td>
                     <td class="py-3 text-center">
-                        <span class="px-2 py-1 rounded-full text-xs ${item.severity === 'high' ? 'bg-red-500/20 text-red-400' :
-                             item.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}">
-                            ${item.severity || 'high'}
-                        </span>
+                        <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
+                            <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
+                            <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
+                        </select>
+                    </td>
+                    <td class="py-3 text-center">
+                        <button class="reset-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
+                            ↻ Reset
+                        </button>
+                        <button class="quick-replace-btn text-gray-400 hover:text-white text-sm ml-2" data-block="${item.blockNumber}">
+                            Quick Replace
+                        </button>
                     </td>
                 `;
                 elements.resultsBody.appendChild(row);
+            });
+           
+            // Add event listeners for reset buttons
+            document.querySelectorAll('.reset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const blockNumber = btn.dataset.block;
+                    const input = document.querySelector(`input[data-block="${blockNumber}"]`);
+                    input.value = input.dataset.original;
+                    input.classList.add('bg-green-700/30');
+                    setTimeout(() => input.classList.remove('bg-green-700/30'), 300);
+                });
+            });
+           
+            // Add event listeners for quick replace buttons
+            document.querySelectorAll('.quick-replace-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const blockNumber = btn.dataset.block;
+                    const input = document.querySelector(`input[data-block="${blockNumber}"]`);
+                    showQuickReplaceDropdown(e, blockNumber, input);
+                });
+            });
+           
+            // Add event listeners for severity dropdowns
+            document.querySelectorAll('.severity-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const blockNumber = select.dataset.block;
+                    const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                    item.severity = e.target.value;
+                    const row = select.closest('tr');
+                    row.className = SEVERITY_LEVELS[item.severity].class;
+                    generateSeverityChart();
+                });
+            });
+           
+            // Add event listeners for input changes with history
+            document.querySelectorAll('.replacement-input').forEach(input => {
+                input.addEventListener('change', () => {
+                    const blockNumber = input.dataset.block;
+                    state.editHistory.push({
+                        blockNumber,
+                        oldValue: input.dataset.lastValue || input.dataset.original,
+                        newValue: input.value
+                    });
+                    input.dataset.lastValue = input.value;
+                    input.classList.add('bg-blue-700/30');
+                    setTimeout(() => input.classList.remove('bg-blue-700/30'), 300);
+                });
+            });
+           
+            // Add event listeners for profanity highlights
+            document.querySelectorAll('.profanity-highlight').forEach(span => {
+                span.addEventListener('click', (e) => {
+                    showReplacementDropdown(e, span.dataset.word, span.dataset.index, span.closest('tr').querySelector('.replacement-input'));
+                });
             });
            
             elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
@@ -377,6 +577,97 @@
                 elements.loadingGame.classList.add('hidden');
                 elements.resultsSection.classList.remove('hidden');
             }, 300);
+        }
+
+        function showReplacementDropdown(e, word, index, input) {
+            const existing = document.querySelector('.suggestion-dropdown');
+            if (existing) existing.remove();
+           
+            const dropdown = document.createElement('div');
+            dropdown.className = 'suggestion-dropdown';
+            const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
+            suggestions.forEach(suggestion => {
+                const option = document.createElement('div');
+                option.textContent = suggestion;
+                option.addEventListener('click', () => {
+                    const currentValue = input.value;
+                    const start = parseInt(index);
+                    const wordLength = word.length;
+                    input.value = currentValue.substring(0, start) + suggestion + currentValue.substring(start + wordLength);
+                    input.dispatchEvent(new Event('change'));
+                    dropdown.remove();
+                });
+                dropdown.appendChild(option);
+            });
+           
+            const rect = e.target.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdown.style.left = `${rect.left + window.scrollX}px`;
+            document.body.appendChild(dropdown);
+           
+            document.addEventListener('click', (event) => {
+                if (!dropdown.contains(event.target) && event.target !== e.target) {
+                    dropdown.remove();
+                }
+            }, { once: true });
+        }
+
+        function showQuickReplaceDropdown(e, blockNumber, input) {
+            const existing = document.querySelector('.suggestion-dropdown');
+            if (existing) existing.remove();
+           
+            const dropdown = document.createElement('div');
+            dropdown.className = 'suggestion-dropdown';
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            const uniqueWords = [...new Set(item.profanities.map(p => p.word.toLowerCase()))];
+            uniqueWords.forEach(word => {
+                const option = document.createElement('div');
+                option.textContent = `Replace "${word}"`;
+                option.addEventListener('click', () => {
+                    const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
+                    showWordReplaceDropdown(word, suggestions, input);
+                    dropdown.remove();
+                });
+                dropdown.appendChild(option);
+            });
+           
+            const rect = e.target.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdown.style.left = `${rect.left + window.scrollX}px`;
+            document.body.appendChild(dropdown);
+           
+            document.addEventListener('click', (event) => {
+                if (!dropdown.contains(event.target) && event.target !== e.target) {
+                    dropdown.remove();
+                }
+            }, { once: true });
+        }
+
+        function showWordReplaceDropdown(word, suggestions, input) {
+            const dropdown = document.createElement('div');
+            dropdown.className = 'suggestion-dropdown';
+            suggestions.forEach(suggestion => {
+                const option = document.createElement('div');
+                option.textContent = suggestion;
+                option.addEventListener('click', () => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    input.value = input.value.replace(regex, suggestion);
+                    input.dispatchEvent(new Event('change'));
+                    dropdown.remove();
+                });
+                dropdown.appendChild(option);
+            });
+           
+            const rect = input.getBoundingClientRect();
+            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+            dropdown.style.left = `${rect.left + window.scrollX}px`;
+            document.body.appendChild(dropdown);
+           
+            document.addEventListener('click', (event) => {
+                if (!dropdown.contains(event.target)) {
+                    dropdown.remove();
+                }
+            }, { once: true });
         }
 
         function generateGameBoard() {
@@ -453,7 +744,36 @@
                 const blockNumber = input.dataset.block;
                 const detectedItem = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
                 input.value = detectedItem ? detectedItem.modifiedText : '[CENSORED]';
+                input.dispatchEvent(new Event('change'));
             });
+        }
+
+        function batchReplace() {
+            const word = elements.batchWord.value.trim();
+            const replacement = elements.batchReplacement.value.trim();
+            if (!word || !replacement) {
+                alert('Please enter both a word and a replacement.');
+                return;
+            }
+           
+            document.querySelectorAll('.replacement-input').forEach(input => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                if (regex.test(input.value)) {
+                    input.value = input.value.replace(regex, replacement);
+                    input.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function undoLastEdit() {
+            const lastEdit = state.editHistory.pop();
+            if (lastEdit) {
+                const input = document.querySelector(`input[data-block="${lastEdit.blockNumber}"]`);
+                input.value = lastEdit.oldValue;
+                input.dataset.lastValue = lastEdit.oldValue;
+                input.classList.add('bg-green-700/30');
+                setTimeout(() => input.classList.remove('bg-green-700/30'), 300);
+            }
         }
 
         function skipLoadingGame() {
@@ -492,6 +812,8 @@
             elements.refreshBtn.addEventListener('click', loadProfanityList);
             elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             elements.autoReplaceBtn.addEventListener('click', autoReplaceAll);
+            elements.batchReplaceBtn.addEventListener('click', batchReplace);
+            elements.undoBtn.addEventListener('click', undoLastEdit);
             elements.skipGameBtn.addEventListener('click', skipLoadingGame);
         }
 
