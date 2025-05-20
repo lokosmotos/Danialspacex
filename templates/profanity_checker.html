@@ -51,54 +51,6 @@
         .severity-high { background-color: rgba(239, 68, 68, 0.1); }
         .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
         .severity-low { background-color: rgba(59, 130, 246, 0.1); }
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-        .modal-content {
-            background: #1f2937;
-            border-radius: 8px;
-            padding: 16px;
-            max-width: 400px;
-            width: 90%;
-            position: relative;
-        }
-        .modal-close {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: none;
-            border: none;
-            color: #9ca3af;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .suggestion-btn {
-            background: #3b82f6;
-            color: white;
-            padding: 6px 12px;
-            margin: 4px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .suggestion-btn:hover {
-            background: #2563eb;
-        }
-        .suggestion-btn.default {
-            background: #10b981;
-        }
-        .suggestion-btn.default:hover {
-            background: #059669;
-        }
         .tooltip {
             position: absolute;
             background: #1f2937;
@@ -269,42 +221,6 @@
                 </button>
             </div>
         </div>
-
-        <!-- Modal for Profanity Replacement -->
-        <div id="replaceModal" class="modal hidden" role="dialog" aria-modal="true">
-            <div class="modal-content text-gray-100">
-                <button class="modal-close" aria-label="Close modal">✕</button>
-                <h3 class="text-lg font-semibold text-blue-400 mb-3">Replace Profanity</h3>
-                <div class="mb-3">
-                    <p class="text-sm"><strong>Word:</strong> <span id="modalWord" class="text-red-400"></span></p>
-                    <p class="text-sm"><strong>Timecode:</strong> <span id="modalTimecode" class="font-mono"></span></p>
-                </div>
-                <div class="mb-3">
-                    <label class="block text-sm font-medium mb-1">Choose Replacement</label>
-                    <div id="modalSuggestions" class="flex flex-wrap gap-2"></div>
-                    <input id="modalReplacement" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full mt-2 text-sm" placeholder="Custom replacement">
-                </div>
-                <div class="mb-3">
-                    <label class="block text-sm font-medium mb-1">Preview</label>
-                    <div id="modalPreview" class="bg-gray-700/50 p-2 rounded text-sm"></div>
-                </div>
-                <div class="mb-3">
-                    <button id="toggleSeverity" class="text-sm text-blue-400 hover:text-blue-300">Show Severity Options</button>
-                    <div id="severityOptions" class="hidden mt-2">
-                        <label class="block text-sm font-medium mb-1">Severity</label>
-                        <select id="modalSeverity" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-full text-sm">
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button id="modalApplyBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm">Apply</button>
-                    <button id="modalCancelBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded text-sm">Cancel</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -385,25 +301,11 @@
             batchWord: document.getElementById('batchWord'),
             batchReplacement: document.getElementById('batchReplacement'),
             undoBtn: document.getElementById('undoBtn'),
-            skipGameBtn: document.getElementById('skipGameBtn'),
-            replaceModal: document.getElementById('replaceModal'),
-            modalWord: document.getElementById('modalWord'),
-            modalTimecode: document.getElementById('modalTimecode'),
-            modalSeverity: document.getElementById('modalSeverity'),
-            modalReplacement: document.getElementById('modalReplacement'),
-            modalSuggestions: document.getElementById('modalSuggestions'),
-            modalPreview: document.getElementById('modalPreview'),
-            modalApplyBtn: document.getElementById('modalApplyBtn'),
-            modalCancelBtn: document.getElementById('modalCancelBtn'),
-            modalCloseBtn: document.querySelector('.modal-close'),
-            toggleSeverity: document.getElementById('toggleSeverity'),
-            severityOptions: document.getElementById('severityOptions')
+            skipGameBtn: document.getElementById('skipGameBtn')
         };
 
         // ========== Initialization ==========
         document.addEventListener('DOMContentLoaded', async () => {
-            // Ensure modal is hidden on load
-            elements.replaceModal.classList.add('hidden');
             await loadProfanityList();
             setupEventListeners();
             generateGameBoard();
@@ -596,42 +498,11 @@
                     </td>
                     <td class="py-3 px-2 text-center">
                         <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
-                            Quick Replace
+                            Replace All with [CENSORED]
                         </button>
                     </td>
                 `;
                 elements.resultsBody.appendChild(row);
-            });
-           
-            // Add event listeners for quick replace buttons
-            document.querySelectorAll('.quick-replace-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const blockNumber = btn.dataset.block;
-                    showQuickReplaceModal(blockNumber);
-                });
-            });
-           
-            // Add event listeners for severity dropdowns
-            document.querySelectorAll('.severity-select').forEach(select => {
-                select.addEventListener('change', (e) => {
-                    const blockNumber = select.dataset.block;
-                    const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-                    item.severity = e.target.value;
-                    const row = select.closest('tr');
-                    row.className = SEVERITY_LEVELS[item.severity].class;
-                    row.dataset.severity = item.severity;
-                    row.classList.add('success');
-                    setTimeout(() => row.classList.remove('success'), 1000);
-                    generateSeverityChart();
-                });
-            });
-           
-            // Add event listeners for profanity highlights
-            document.querySelectorAll('.profanity-highlight').forEach(span => {
-                span.addEventListener('click', (e) => {
-                    const blockNumber = span.closest('tr').dataset.block;
-                    showTooltip(e, blockNumber, span.dataset.word, span.dataset.index, span.dataset.severity);
-                });
             });
            
             elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
@@ -663,14 +534,6 @@
                 tooltip.appendChild(option);
             });
            
-            const customOption = document.createElement('div');
-            customOption.textContent = 'Custom...';
-            customOption.addEventListener('click', () => {
-                showReplaceModal(blockNumber, word, index, severity);
-                tooltip.remove();
-            });
-            tooltip.appendChild(customOption);
-           
             const rect = e.target.getBoundingClientRect();
             tooltip.style.top = `${rect.bottom + window.scrollY}px`;
             tooltip.style.left = `${rect.left + window.scrollX}px`;
@@ -681,122 +544,6 @@
                     tooltip.remove();
                 }
             }, { once: true });
-        }
-
-        function showReplaceModal(blockNumber, word, index, severity) {
-            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-            elements.modalWord.textContent = word;
-            elements.modalTimecode.textContent = item.timecodes;
-            elements.modalSeverity.value = severity;
-            elements.modalReplacement.value = '';
-            elements.modalPreview.textContent = item.modifiedText;
-            elements.severityOptions.classList.add('hidden');
-           
-            elements.modalSuggestions.innerHTML = '';
-            const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
-            suggestions.forEach(suggestion => {
-                const btn = document.createElement('button');
-                btn.className = `suggestion-btn ${suggestion === '[CENSORED]' ? 'default' : ''}`;
-                btn.textContent = suggestion;
-                btn.addEventListener('click', () => {
-                    applyReplacement(blockNumber, word, index, suggestion, elements.modalSeverity.value);
-                    elements.replaceModal.classList.add('hidden');
-                    const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-                    row.classList.add('success');
-                    setTimeout(() => row.classList.remove('success'), 1000);
-                });
-                elements.modalSuggestions.appendChild(btn);
-            });
-           
-            elements.modalReplacement.addEventListener('input', () => {
-                updateModalPreview(blockNumber, word, elements.modalReplacement.value || '[CENSORED]');
-            });
-           
-            elements.modalApplyBtn.onclick = () => {
-                const replacement = elements.modalReplacement.value || '[CENSORED]';
-                applyReplacement(blockNumber, word, index, replacement, elements.modalSeverity.value);
-                elements.replaceModal.classList.add('hidden');
-                const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-                row.classList.add('success');
-                setTimeout(() => row.classList.remove('success'), 1000);
-            };
-           
-            elements.modalCancelBtn.onclick = () => {
-                elements.replaceModal.classList.add('hidden');
-            };
-           
-            elements.modalCloseBtn.onclick = () => {
-                elements.replaceModal.classList.add('hidden');
-            };
-           
-            elements.toggleSeverity.onclick = () => {
-                elements.severityOptions.classList.toggle('hidden');
-            };
-           
-            elements.replaceModal.classList.remove('hidden');
-        }
-
-        function showQuickReplaceModal(blockNumber) {
-            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-            elements.modalWord.textContent = 'Multiple Words';
-            elements.modalTimecode.textContent = item.timecodes;
-            elements.modalSeverity.value = item.severity;
-            elements.modalReplacement.value = '';
-            elements.modalPreview.textContent = item.modifiedText;
-            elements.severityOptions.classList.add('hidden');
-           
-            elements.modalSuggestions.innerHTML = '';
-            const uniqueWords = [...new Set(item.profanities.map(p => p.word.toLowerCase()))];
-            uniqueWords.forEach(word => {
-                const btn = document.createElement('button');
-                btn.className = 'suggestion-btn';
-                btn.textContent = `Replace "${word}"`;
-                btn.addEventListener('click', () => {
-                    const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
-                    elements.modalSuggestions.innerHTML = '';
-                    suggestions.forEach(suggestion => {
-                        const subBtn = document.createElement('button');
-                        subBtn.className = `suggestion-btn ${suggestion === '[CENSORED]' ? 'default' : ''}`;
-                        subBtn.textContent = suggestion;
-                        subBtn.addEventListener('click', () => {
-                            applyQuickReplacement(blockNumber, word, suggestion);
-                            elements.replaceModal.classList.add('hidden');
-                            const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-                            row.classList.add('success');
-                            setTimeout(() => row.classList.remove('success'), 1000);
-                        });
-                        elements.modalSuggestions.appendChild(subBtn);
-                    });
-                });
-                elements.modalSuggestions.appendChild(btn);
-            });
-           
-            elements.modalApplyBtn.onclick = () => {
-                elements.replaceModal.classList.add('hidden');
-            };
-           
-            elements.modalCancelBtn.onclick = () => {
-                elements.replaceModal.classList.add('hidden');
-            };
-           
-            elements.modalCloseBtn.onclick = () => {
-                elements.replaceModal.classList.add('hidden');
-            };
-           
-            elements.toggleSeverity.onclick = () => {
-                elements.severityOptions.classList.toggle('hidden');
-            };
-           
-            elements.replaceModal.classList.remove('hidden');
-        }
-
-        function updateModalPreview(blockNumber, word, replacement) {
-            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-            const previewText = item.modifiedText.replace(
-                new RegExp(`\\b${word}\\b`, 'gi'),
-                `<span class="text-green-400">${replacement}</span>`
-            );
-            elements.modalPreview.innerHTML = previewText;
         }
 
         function applyReplacement(blockNumber, word, index, replacement, severity) {
@@ -816,13 +563,17 @@
             generateSeverityChart();
         }
 
-        function applyQuickReplacement(blockNumber, word, replacement) {
+        function applyQuickReplacement(blockNumber) {
             const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
             const oldValue = item.modifiedText;
-            item.modifiedText = item.modifiedText.replace(new RegExp(`\\b${word}\\b`, 'gi'), replacement);
+            item.profanities.forEach(p => {
+                item.modifiedText = item.modifiedText.replace(new RegExp(`\\b${p.word}\\b`, 'gi'), '[CENSORED]');
+            });
             state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
             const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
             row.querySelector('.replacement-preview').textContent = item.modifiedText;
+            row.classList.add('success');
+            setTimeout(() => row.classList.remove('success'), 1000);
         }
 
         function generateGameBoard() {
@@ -979,6 +730,41 @@
             elements.batchReplaceBtn.addEventListener('click', batchReplace);
             elements.undoBtn.addEventListener('click', undoLastEdit);
             elements.skipGameBtn.addEventListener('click', skipLoadingGame);
+
+            // Delegated event listeners for table interactions
+            elements.resultsBody.addEventListener('click', (e) => {
+                const highlight = e.target.closest('.profanity-highlight');
+                const quickReplace = e.target.closest('.quick-replace-btn');
+                const severitySelect = e.target.closest('.severity-select');
+
+                if (highlight) {
+                    e.preventDefault();
+                    const blockNumber = highlight.closest('tr').dataset.block;
+                    const word = highlight.dataset.word;
+                    const index = highlight.dataset.index;
+                    const severity = highlight.dataset.severity;
+                    showTooltip(e, blockNumber, word, index, severity);
+                } else if (quickReplace) {
+                    e.preventDefault();
+                    const blockNumber = quickReplace.dataset.block;
+                    applyQuickReplacement(blockNumber);
+                }
+            });
+
+            elements.resultsBody.addEventListener('change', (e) => {
+                const severitySelect = e.target.closest('.severity-select');
+                if (severitySelect) {
+                    const blockNumber = severitySelect.dataset.block;
+                    const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                    item.severity = e.target.value;
+                    const row = severitySelect.closest('tr');
+                    row.className = SEVERITY_LEVELS[item.severity].class;
+                    row.dataset.severity = item.severity;
+                    row.classList.add('success');
+                    setTimeout(() => row.classList.remove('success'), 1000);
+                    generateSeverityChart();
+                }
+            });
         }
 
         function showSuccessMessage(message) {
