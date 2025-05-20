@@ -51,34 +51,44 @@
         .severity-high { background-color: rgba(239, 68, 68, 0.1); }
         .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
         .severity-low { background-color: rgba(59, 130, 246, 0.1); }
-        .replacement-input {
-            transition: all 0.3s ease;
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
         }
-        .replacement-input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        .modal-content {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        .reset-btn, .quick-replace-btn {
+        .suggestion-btn {
+            background: #374151;
+            padding: 8px;
+            margin: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .suggestion-btn:hover {
+            background: #4b5563;
+        }
+        .quick-replace-btn {
             opacity: 0;
             transition: opacity 0.2s ease;
         }
-        tr:hover .reset-btn, tr:hover .quick-replace-btn {
+        tr:hover .quick-replace-btn {
             opacity: 1;
-        }
-        .suggestion-dropdown {
-            position: absolute;
-            background: #1f2937;
-            border: 1px solid #4b5563;
-            border-radius: 4px;
-            z-index: 10;
-            min-width: 120px;
-        }
-        .suggestion-dropdown div {
-            padding: 8px;
-            cursor: pointer;
-        }
-        .suggestion-dropdown div:hover {
-            background: #374151;
         }
     </style>
 </head>
@@ -87,7 +97,7 @@
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
-            <p class="text-gray-400">Upload your SRT file to detect and edit inappropriate language</p>
+            <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language</p>
         </div>
 
         <!-- Upload Section -->
@@ -184,12 +194,14 @@
                 <table class="w-full">
                     <thead>
                         <tr class="border-b border-gray-700 text-left">
-                            <th class="pb-3 font-medium">Line</th>
-                            <th class="pb-3 font-medium">Timecode</th>
-                            <th class="pb-3 font-medium">Original Text</th>
-                            <th class="pb-3 font-medium">Replacement</th>
-                            <th class="pb-3 font-medium">Severity</th>
-                            <th class="pb-3 font-medium">Actions</th>
+                            <th class="py-3 px-2 font-medium">Line</th>
+                            <th class="py-3 px-2
+
+ font-medium">Timecode</th>
+                            <th class="py-3 px-2 font-medium">Original Text</th>
+                            <th class="py-3 px-2 font-medium">Replacement Preview</th>
+                            <th class="py-3 px-2 font-medium">Severity</th>
+                            <th class="py-3 px-2 font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
@@ -212,6 +224,39 @@
                 <button type="button" id="autoReplaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
                     Auto-Replace All with [CENSORED]
                 </button>
+            </div>
+        </div>
+
+        <!-- Modal for Profanity Replacement -->
+        <div id="replaceModal" class="modal hidden">
+            <div class="modal-content text-gray-100">
+                <h3 class="text-lg font-semibold text-blue-400 mb-4">Replace Profanity</h3>
+                <div class="mb-4">
+                    <p><strong>Word:</strong> <span id="modalWord" class="text-red-400"></span></p>
+                    <p><strong>Context:</strong> <span id="modalContext"></span></p>
+                    <p><strong>Timecode:</strong> <span id="modalTimecode" class="font-mono"></span></p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Severity</label>
+                    <select id="modalSeverity" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 w-full text-sm">
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Replacement</label>
+                    <input id="modalReplacement" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full mb-2" placeholder="Custom replacement">
+                    <div id="modalSuggestions" class="flex flex-wrap gap-2"></div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Preview</label>
+                    <div id="modalPreview" class="bg-gray-700/50 p-2 rounded text-sm"></div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="modalApplyBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Apply</button>
+                    <button id="modalCancelBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
@@ -294,7 +339,17 @@
             batchWord: document.getElementById('batchWord'),
             batchReplacement: document.getElementById('batchReplacement'),
             undoBtn: document.getElementById('undoBtn'),
-            skipGameBtn: document.getElementById('skipGameBtn')
+            skipGameBtn: document.getElementById('skipGameBtn'),
+            replaceModal: document.getElementById('replaceModal'),
+            modalWord: document.getElementById('modalWord'),
+            modalContext: document.getElementById('modalContext'),
+            modalTimecode: document.getElementById('modalTimecode'),
+            modalSeverity: document.getElementById('modalSeverity'),
+            modalReplacement: document.getElementById('modalReplacement'),
+            modalSuggestions: document.getElementById('modalSuggestions'),
+            modalPreview: document.getElementById('modalPreview'),
+            modalApplyBtn: document.getElementById('modalApplyBtn'),
+            modalCancelBtn: document.getElementById('modalCancelBtn')
         };
 
         // ========== Initialization ==========
@@ -311,35 +366,26 @@
                 severityCounts[item.severity]++;
             });
 
-            ```chartjs
-            {
-                "type": "bar",
-                "data": {
-                    "labels": ["High", "Medium", "Low"],
-                    "datasets": [{
-                        "label": "Profanity Severity",
-                        "data": [${severityCounts.high}, ${severityCounts.medium}, ${severityCounts.low}],
-                        "backgroundColor": ["#ef4444", "#eab308", "#3b82f6"],
-                        "borderColor": ["#b91c1c", "#b45309", "#1d4ed8"],
-                        "borderWidth": 1
+            new Chart(document.getElementById('severityChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['High', 'Medium', 'Low'],
+                    datasets: [{
+                        label: 'Profanity Severity',
+                        data: [severityCounts.high, severityCounts.medium, severityCounts.low],
+                        backgroundColor: ['#ef4444', '#eab308', '#3b82f6'],
+                        borderColor: ['#b91c1c', '#b45309', '#1d4ed8'],
+                        borderWidth: 1
                     }]
                 },
-                "options": {
-                    "scales": {
-                        "y": {
-                            "beginAtZero": true,
-                            "title": { "display": true, "text": "Count" }
-                        },
-                        "x": {
-                            "title": { "display": true, "text": "Severity" }
-                        }
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Count' } },
+                        x: { title: { display: true, text: 'Severity' } }
                     },
-                    "plugins": {
-                        "legend": { "display": false }
-                    }
+                    plugins: { legend: { display: false } }
                 }
-            }
-            ```
+            });
         }
 
         // ========== Core Functions ==========
@@ -401,9 +447,7 @@
             blocks.forEach(block => {
                 const profanities = findProfanities(block.text, combinedWords);
                 if (profanities.length > 0) {
-                    // Sort by index in descending order to avoid replacement conflicts
                     profanities.sort((a, b) => b.index - a.index);
-                   
                     let modifiedText = block.text;
                     profanities.forEach(p => {
                         modifiedText = modifiedText.substring(0, p.index) +
@@ -479,36 +523,29 @@
             state.detectedProfanities.forEach(item => {
                 const row = document.createElement('tr');
                 row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
+                row.dataset.block = item.blockNumber;
                
                 let highlightedText = item.text;
                 item.profanities.forEach(p => {
                     highlightedText = highlightedText.substring(0, p.index) +
-                        `<span class="profanity-highlight" data-word="${p.word}" data-index="${p.index}">${highlightedText.substring(p.index, p.index + p.length)}</span>` +
+                        `<span class="profanity-highlight" data-word="${p.word}" data-index="${p.index}" data-severity="${p.severity}">${highlightedText.substring(p.index, p.index + p.length)}</span>` +
                         highlightedText.substring(p.index + p.length);
                 });
                
                 row.innerHTML = `
-                    <td class="py-3 font-mono">${item.blockNumber}</td>
-                    <td class="py-3 font-mono">${item.timecodes}</td>
-                    <td class="py-3">${highlightedText}</td>
-                    <td class="py-3 relative">
-                        <input type="text" data-block="${item.blockNumber}"
-                               value="${item.modifiedText}" 
-                               class="replacement-input bg-gray-700 border border-gray-600 rounded px-3 py-1 w-full"
-                               data-original="${item.modifiedText}">
-                    </td>
-                    <td class="py-3 text-center">
+                    <td class="py-3 px-2 font-mono">${item.blockNumber}</td>
+                    <td class="py-3 px-2 font-mono">${item.timecodes}</td>
+                    <td class="py-3 px-2">${highlightedText}</td>
+                    <td class="py-3 px-2 replacement-preview">${item.modifiedText}</td>
+                    <td class="py-3 px-2 text-center">
                         <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
                             <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
                             <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
                             <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
                         </select>
                     </td>
-                    <td class="py-3 text-center">
-                        <button class="reset-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
-                            ↻ Reset
-                        </button>
-                        <button class="quick-replace-btn text-gray-400 hover:text-white text-sm ml-2" data-block="${item.blockNumber}">
+                    <td class="py-3 px-2 text-center">
+                        <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
                             Quick Replace
                         </button>
                     </td>
@@ -516,23 +553,11 @@
                 elements.resultsBody.appendChild(row);
             });
            
-            // Add event listeners for reset buttons
-            document.querySelectorAll('.reset-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const blockNumber = btn.dataset.block;
-                    const input = document.querySelector(`input[data-block="${blockNumber}"]`);
-                    input.value = input.dataset.original;
-                    input.classList.add('bg-green-700/30');
-                    setTimeout(() => input.classList.remove('bg-green-700/30'), 300);
-                });
-            });
-           
             // Add event listeners for quick replace buttons
             document.querySelectorAll('.quick-replace-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const blockNumber = btn.dataset.block;
-                    const input = document.querySelector(`input[data-block="${blockNumber}"]`);
-                    showQuickReplaceDropdown(e, blockNumber, input);
+                    showQuickReplaceModal(blockNumber);
                 });
             });
            
@@ -544,29 +569,16 @@
                     item.severity = e.target.value;
                     const row = select.closest('tr');
                     row.className = SEVERITY_LEVELS[item.severity].class;
+                    row.dataset.severity = item.severity;
                     generateSeverityChart();
-                });
-            });
-           
-            // Add event listeners for input changes with history
-            document.querySelectorAll('.replacement-input').forEach(input => {
-                input.addEventListener('change', () => {
-                    const blockNumber = input.dataset.block;
-                    state.editHistory.push({
-                        blockNumber,
-                        oldValue: input.dataset.lastValue || input.dataset.original,
-                        newValue: input.value
-                    });
-                    input.dataset.lastValue = input.value;
-                    input.classList.add('bg-blue-700/30');
-                    setTimeout(() => input.classList.remove('bg-blue-700/30'), 300);
                 });
             });
            
             // Add event listeners for profanity highlights
             document.querySelectorAll('.profanity-highlight').forEach(span => {
                 span.addEventListener('click', (e) => {
-                    showReplacementDropdown(e, span.dataset.word, span.dataset.index, span.closest('tr').querySelector('.replacement-input'));
+                    const blockNumber = span.closest('tr').dataset.block;
+                    showReplaceModal(blockNumber, span.dataset.word, span.dataset.index, span.dataset.severity);
                 });
             });
            
@@ -579,95 +591,128 @@
             }, 300);
         }
 
-        function showReplacementDropdown(e, word, index, input) {
-            const existing = document.querySelector('.suggestion-dropdown');
-            if (existing) existing.remove();
+        function showReplaceModal(blockNumber, word, index, severity) {
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            elements.modalWord.textContent = word;
+            elements.modalContext.innerHTML = item.text.replace(
+                new RegExp(`\\b${word}\\b`, 'gi'),
+                `<span class="profanity-highlight">${word}</span>`
+            );
+            elements.modalTimecode.textContent = item.timecodes;
+            elements.modalSeverity.value = severity;
+            elements.modalReplacement.value = '';
+            elements.modalPreview.textContent = item.modifiedText;
            
-            const dropdown = document.createElement('div');
-            dropdown.className = 'suggestion-dropdown';
+            elements.modalSuggestions.innerHTML = '';
             const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
             suggestions.forEach(suggestion => {
-                const option = document.createElement('div');
-                option.textContent = suggestion;
-                option.addEventListener('click', () => {
-                    const currentValue = input.value;
-                    const start = parseInt(index);
-                    const wordLength = word.length;
-                    input.value = currentValue.substring(0, start) + suggestion + currentValue.substring(start + wordLength);
-                    input.dispatchEvent(new Event('change'));
-                    dropdown.remove();
+                const btn = document.createElement('button');
+                btn.className = 'suggestion-btn';
+                btn.textContent = suggestion;
+                btn.addEventListener('click', () => {
+                    elements.modalReplacement.value = suggestion;
+                    updateModalPreview(blockNumber, word, suggestion);
                 });
-                dropdown.appendChild(option);
+                elements.modalSuggestions.appendChild(btn);
             });
            
-            const rect = e.target.getBoundingClientRect();
-            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-            dropdown.style.left = `${rect.left + window.scrollX}px`;
-            document.body.appendChild(dropdown);
+            elements.modalReplacement.addEventListener('input', () => {
+                updateModalPreview(blockNumber, word, elements.modalReplacement.value || '[CENSORED]');
+            });
            
-            document.addEventListener('click', (event) => {
-                if (!dropdown.contains(event.target) && event.target !== e.target) {
-                    dropdown.remove();
-                }
-            }, { once: true });
+            elements.modalApplyBtn.onclick = () => {
+                const replacement = elements.modalReplacement.value || '[CENSORED]';
+                applyReplacement(blockNumber, word, index, replacement, elements.modalSeverity.value);
+                elements.replaceModal.classList.add('hidden');
+            };
+           
+            elements.modalCancelBtn.onclick = () => {
+                elements.replaceModal.classList.add('hidden');
+            };
+           
+            elements.replaceModal.classList.remove('hidden');
         }
 
-        function showQuickReplaceDropdown(e, blockNumber, input) {
-            const existing = document.querySelector('.suggestion-dropdown');
-            if (existing) existing.remove();
-           
-            const dropdown = document.createElement('div');
-            dropdown.className = 'suggestion-dropdown';
+        function showQuickReplaceModal(blockNumber) {
             const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            elements.modalWord.textContent = 'Multiple Words';
+            elements.modalContext.innerHTML = item.text;
+            elements.modalTimecode.textContent = item.timecodes;
+            elements.modalSeverity.value = item.severity;
+            elements.modalReplacement.value = '';
+            elements.modalPreview.textContent = item.modifiedText;
+           
+            elements.modalSuggestions.innerHTML = '';
             const uniqueWords = [...new Set(item.profanities.map(p => p.word.toLowerCase()))];
             uniqueWords.forEach(word => {
-                const option = document.createElement('div');
-                option.textContent = `Replace "${word}"`;
-                option.addEventListener('click', () => {
+                const btn = document.createElement('button');
+                btn.className = 'suggestion-btn';
+                btn.textContent = `Replace "${word}"`;
+                btn.addEventListener('click', () => {
                     const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
-                    showWordReplaceDropdown(word, suggestions, input);
-                    dropdown.remove();
+                    elements.modalSuggestions.innerHTML = '';
+                    suggestions.forEach(suggestion => {
+                        const subBtn = document.createElement('button');
+                        subBtn.className = 'suggestion-btn';
+                        subBtn.textContent = suggestion;
+                        subBtn.addEventListener('click', () => {
+                            applyQuickReplacement(blockNumber, word, suggestion);
+                            elements.replaceModal.classList.add('hidden');
+                        });
+                        elements.modalSuggestions.appendChild(subBtn);
+                    });
                 });
-                dropdown.appendChild(option);
+                elements.modalSuggestions.appendChild(btn);
             });
            
-            const rect = e.target.getBoundingClientRect();
-            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-            dropdown.style.left = `${rect.left + window.scrollX}px`;
-            document.body.appendChild(dropdown);
+            elements.modalApplyBtn.onclick = () => {
+                elements.replaceModal.classList.add('hidden');
+            };
            
-            document.addEventListener('click', (event) => {
-                if (!dropdown.contains(event.target) && event.target !== e.target) {
-                    dropdown.remove();
-                }
-            }, { once: true });
+            elements.modalCancelBtn.onclick = () => {
+                elements.replaceModal.classList.add('hidden');
+            };
+           
+            elements.replaceModal.classList.remove('hidden');
         }
 
-        function showWordReplaceDropdown(word, suggestions, input) {
-            const dropdown = document.createElement('div');
-            dropdown.className = 'suggestion-dropdown';
-            suggestions.forEach(suggestion => {
-                const option = document.createElement('div');
-                option.textContent = suggestion;
-                option.addEventListener('click', () => {
-                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                    input.value = input.value.replace(regex, suggestion);
-                    input.dispatchEvent(new Event('change'));
-                    dropdown.remove();
-                });
-                dropdown.appendChild(option);
-            });
+        function updateModalPreview(blockNumber, word, replacement) {
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            const previewText = item.modifiedText.replace(
+                new RegExp(`\\b${word}\\b`, 'gi'),
+                `<span class="text-green-400">${replacement}</span>`
+            );
+            elements.modalPreview.innerHTML = previewText;
+        }
+
+        function applyReplacement(blockNumber, word, index, replacement, severity) {
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            const start = parseInt(index);
+            const wordLength = word.length;
+            const oldValue = item.modifiedText;
+            item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
+            item.severity = severity;
+            item.profanities.find(p => p.index == index && p.word == word).severity = severity;
            
-            const rect = input.getBoundingClientRect();
-            dropdown.style.top = `${rect.bottom + window.scrollY}px`;
-            dropdown.style.left = `${rect.left + window.scrollX}px`;
-            document.body.appendChild(dropdown);
-           
-            document.addEventListener('click', (event) => {
-                if (!dropdown.contains(event.target)) {
-                    dropdown.remove();
-                }
-            }, { once: true });
+            state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+            const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
+            row.querySelector('.replacement-preview').textContent = item.modifiedText;
+            row.className = SEVERITY_LEVELS[severity].class;
+            row.dataset.severity = severity;
+            row.classList.add('bg-blue-700/30');
+            setTimeout(() => row.classList.remove('bg-blue-700/30'), 300);
+            generateSeverityChart();
+        }
+
+        function applyQuickReplacement(blockNumber, word, replacement) {
+            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+            const oldValue = item.modifiedText;
+            item.modifiedText = item.modifiedText.replace(new RegExp(`\\b${word}\\b`, 'gi'), replacement);
+            state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+            const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
+            row.querySelector('.replacement-preview').textContent = item.modifiedText;
+            row.classList.add('bg-blue-700/30');
+            setTimeout(() => row.classList.remove('bg-blue-700/30'), 300);
         }
 
         function generateGameBoard() {
@@ -717,9 +762,7 @@
             blocks.forEach(block => {
                 const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
                 output += `${block.number}\n${block.timecodes}\n`;
-                output += `${detectedItem ?
-                          document.querySelector(`input[data-block="${block.number}"]`).value :
-                          block.text}\n\n`;
+                output += `${detectedItem ? detectedItem.modifiedText : block.text}\n\n`;
             });
            
             return output.trim();
@@ -740,11 +783,16 @@
         }
 
         function autoReplaceAll() {
-            document.querySelectorAll('.replacement-input').forEach(input => {
-                const blockNumber = input.dataset.block;
-                const detectedItem = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-                input.value = detectedItem ? detectedItem.modifiedText : '[CENSORED]';
-                input.dispatchEvent(new Event('change'));
+            state.detectedProfanities.forEach(item => {
+                const oldValue = item.modifiedText;
+                item.modifiedText = item.text.replace(new RegExp(`\\b(${state.profanityWords.map(w => w.word).join('|')})\\b`, 'gi'), '[CENSORED]');
+                state.editHistory.push({ blockNumber: item.blockNumber, oldValue, newValue: item.modifiedText });
+                const row = document.querySelector(`tr[data-block="${item.blockNumber}"]`);
+                if (row) {
+                    row.querySelector('.replacement-preview').textContent = item.modifiedText;
+                    row.classList.add('bg-blue-700/30');
+                    setTimeout(() => row.classList.remove('bg-blue-700/30'), 300);
+                }
             });
         }
 
@@ -756,11 +804,16 @@
                 return;
             }
            
-            document.querySelectorAll('.replacement-input').forEach(input => {
+            state.detectedProfanities.forEach(item => {
                 const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                if (regex.test(input.value)) {
-                    input.value = input.value.replace(regex, replacement);
-                    input.dispatchEvent(new Event('change'));
+                if (regex.test(item.modifiedText)) {
+                    const oldValue = item.modifiedText;
+                    item.modifiedText = item.modifiedText.replace(regex, replacement);
+                    state.editHistory.push({ blockNumber: item.blockNumber, oldValue, newValue: item.modifiedText });
+                    const row = document.querySelector(`tr[data-block="${item.blockNumber}"]`);
+                    row.querySelector('.replacement-preview').textContent = item.modifiedText;
+                    row.classList.add('bg-blue-700/30');
+                    setTimeout(() => row.classList.remove('bg-blue-700/30'), 300);
                 }
             });
         }
@@ -768,11 +821,12 @@
         function undoLastEdit() {
             const lastEdit = state.editHistory.pop();
             if (lastEdit) {
-                const input = document.querySelector(`input[data-block="${lastEdit.blockNumber}"]`);
-                input.value = lastEdit.oldValue;
-                input.dataset.lastValue = lastEdit.oldValue;
-                input.classList.add('bg-green-700/30');
-                setTimeout(() => input.classList.remove('bg-green-700/30'), 300);
+                const item = state.detectedProfanities.find(item => item.blockNumber == lastEdit.blockNumber);
+                item.modifiedText = lastEdit.oldValue;
+                const row = document.querySelector(`tr[data-block="${lastEdit.blockNumber}"]`);
+                row.querySelector('.replacement-preview').textContent = item.modifiedText;
+                row.classList.add('bg-green-700/30');
+                setTimeout(() => row.classList.remove('bg-green-700/30'), 300);
             }
         }
 
