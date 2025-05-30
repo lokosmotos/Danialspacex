@@ -20,7 +20,6 @@
             padding: 0 2px;
             border-radius: 2px;
             position: relative;
-            cursor: pointer;
         }
         .profanity-highlight::after {
             content: "⚠";
@@ -29,6 +28,11 @@
             right: -8px;
             font-size: 10px;
             color: #ef4444;
+        }
+        .profanity-highlight select {
+            display: inline-block;
+            margin-left: 4px;
+            vertical-align: middle;
         }
         #loadingGame {
             transition: all 0.5s ease;
@@ -51,23 +55,6 @@
         .severity-high { background-color: rgba(239, 68, 68, 0.1); }
         .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
         .severity-low { background-color: rgba(59, 130, 246, 0.1); }
-        .tooltip {
-            position: absolute;
-            background: #1f2937;
-            border: 1px solid #4b5563;
-            border-radius: 4px;
-            z-index: 10;
-            padding: 8px;
-            min-width: 120px;
-        }
-        .tooltip div {
-            padding: 4px 8px;
-            cursor: pointer;
-            color: #e5e7eb;
-        }
-        .tooltip div:hover {
-            background: #374151;
-        }
         .quick-replace-btn {
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -83,6 +70,9 @@
             right: 8px;
             top: 50%;
             transform: translateY(-50%);
+        }
+        .success-check.block {
+            display: block;
         }
         tr.success .success-check {
             display: block;
@@ -111,7 +101,7 @@
                         <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm"></p>
                     </label>
                 </div>
-               
+
                 <!-- Profanity Word List -->
                 <div class="bg-gray-700/30 p-4 rounded-lg">
                     <div class="flex justify-between items-center mb-2">
@@ -128,7 +118,7 @@
                         <p class="text-xs text-gray-400 mt-1">Format: word:severity (e.g., damn:medium). Default severity is high.</p>
                     </div>
                 </div>
-               
+
                 <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -148,14 +138,14 @@
                 </div>
                 <p id="progressText" class="text-sm text-gray-400 mt-1">0% analyzed</p>
             </div>
-           
+
             <div class="text-center mb-4">
                 <h4 class="font-medium mb-2">🎯 Click the Blue Tiles</h4>
                 <p id="gameScore" class="text-2xl font-bold text-green-400">Score: 0</p>
             </div>
-           
+
             <div id="gameBoard" class="grid grid-cols-5 gap-2 mb-4"></div>
-           
+
             <div class="text-center">
                 <button id="skipGameBtn" class="text-sm text-gray-400 hover:text-white">
                     Skip game and wait normally
@@ -172,16 +162,6 @@
                 </span>
             </div>
 
-            <!-- Batch Replace -->
-            <div class="mb-6 bg-gray-700/30 p-4 rounded-lg">
-                <h3 class="font-semibold text-blue-400 mb-2">Batch Replace</h3>
-                <div class="flex gap-2">
-                    <input id="batchWord" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 flex-1" placeholder="Word to replace">
-                    <input id="batchReplacement" class="bg-gray-700 border border-gray-600 rounded px-3 py-1 flex-1" placeholder="Replacement text">
-                    <button id="batchReplaceBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded">Apply</button>
-                </div>
-            </div>
-
             <!-- Analytics Chart -->
             <div class="mb-6">
                 <canvas id="severityChart" class="max-h-64"></canvas>
@@ -193,8 +173,7 @@
                         <tr class="border-b border-gray-700 text-left">
                             <th class="py-3 px-2 font-medium">Line</th>
                             <th class="py-3 px-2 font-medium">Timecode</th>
-                            <th class="py-3 px-2 font-medium">Original Text</th>
-                            <th class="py-3 px-2 font-medium">Replacement Preview</th>
+                            <th class="py-3 px-2 font-medium">Text</th>
                             <th class="py-3 px-2 font-medium">Severity</th>
                             <th class="py-3 px-2 font-medium">Actions</th>
                         </tr>
@@ -202,7 +181,7 @@
                     <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
                 </table>
             </div>
-           
+
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
                 <button id="undoBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -210,14 +189,20 @@
                     </svg>
                     Undo Last Edit
                 </button>
+                <button id="resetBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Reset All Edits
+                </button>
                 <button id="downloadBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     Download Cleaned SRT
                 </button>
-                <button type="button" id="autoReplaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
-                    Auto-Replace All with [CENSORED]
+                <button id="autoReplaceBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
+                    Censor All Profanities
                 </button>
             </div>
         </div>
@@ -242,19 +227,19 @@
         ];
 
         const SUGGESTED_REPLACEMENTS = {
-            'hell': ['heck', 'hades', '[CENSORED]'],
-            'damn': ['darn', 'shoot', '[CENSORED]'],
-            'bitch': ['jerk', 'brat', '[CENSORED]'],
-            'ass': ['butt', 'rear', '[CENSORED]'],
-            'fuck': ['fudge', 'frick', '[CENSORED]'],
-            'shit': ['poop', 'crud', '[CENSORED]'],
-            'crap': ['crud', 'junk', '[CENSORED]'],
-            'asshole': ['jerk', 'fool', '[CENSORED]'],
-            'bastard': ['jerk', 'brat', '[CENSORED]'],
-            'dick': ['jerk', 'fool', '[CENSORED]'],
-            'piss': ['pee', 'tinkle', '[CENSORED]'],
-            'cunt': ['jerk', '[CENSORED]'],
-            'dickhead': ['jerk', 'fool', '[CENSORED]']
+            'hell': ['heck', 'hades', 'bleep'],
+            'damn': ['darn', 'shoot', 'bleep'],
+            'bitch': ['jerk', 'brat', 'bleep'],
+            'ass': ['butt', 'rear', 'bleep'],
+            'fuck': ['fudge', 'frick', 'bleep'],
+            'shit': ['poop', 'crud', 'bleep'],
+            'crap': ['crud', 'junk', 'bleep'],
+            'asshole': ['jerk', 'fool', 'bleep'],
+            'bastard': ['jerk', 'brat', 'bleep'],
+            'dick': ['jerk', 'fool', 'bleep'],
+            'piss': ['pee', 'tinkle', 'bleep'],
+            'cunt': ['jerk', 'bleep'],
+            'dickhead': ['jerk', 'fool', 'bleep']
         };
 
         const SEVERITY_LEVELS = {
@@ -297,10 +282,8 @@
             customWordsInput: document.getElementById('customProfanityList'),
             downloadBtn: document.getElementById('downloadBtn'),
             autoReplaceBtn: document.getElementById('autoReplaceBtn'),
-            batchReplaceBtn: document.getElementById('batchReplaceBtn'),
-            batchWord: document.getElementById('batchWord'),
-            batchReplacement: document.getElementById('batchReplacement'),
             undoBtn: document.getElementById('undoBtn'),
+            resetBtn: document.getElementById('resetBtn'),
             skipGameBtn: document.getElementById('skipGameBtn')
         };
 
@@ -345,19 +328,15 @@
             try {
                 const response = await fetch('/static/profanity_list.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-               
                 const data = await response.json();
                 if (!validateProfanityList(data)) throw new Error('Invalid JSON format');
-               
                 state.profanityWords = Array.isArray(data) ? data.map(word => ({ word, severity: 'high' })) : data.words;
                 showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
-               
             } catch (error) {
                 console.error('Loading failed:', error);
                 state.profanityWords = DEFAULT_WORDS;
                 showErrorMessage(`Using default list (${DEFAULT_WORDS.length} words)`);
             }
-           
             elements.customContainer.classList.remove('hidden');
         }
 
@@ -373,17 +352,14 @@
                     return { word, severity: SEVERITY_LEVELS[severity] ? severity : 'high' };
                 })
                 .filter(w => w.word);
-           
             return [...new Set([...state.profanityWords, ...customWords].map(w => JSON.stringify(w)))].map(JSON.parse);
         }
 
         // ========== SRT Processing ==========
         async function analyzeContent() {
             if (!validateFileInput()) return;
-           
             startLoadingAnimation();
             state.originalContent = await readFile(elements.fileInput.files[0]);
-           
             simulateProgress(() => {
                 processSRTContent();
                 showResults();
@@ -395,23 +371,15 @@
             const combinedWords = getCombinedWordList();
             const blocks = parseSRT(state.originalContent);
             state.detectedProfanities = [];
-           
+
             blocks.forEach(block => {
                 const profanities = findProfanities(block.text, combinedWords);
                 if (profanities.length > 0) {
-                    profanities.sort((a, b) => b.index - a.index);
-                    let modifiedText = block.text;
-                    profanities.forEach(p => {
-                        modifiedText = modifiedText.substring(0, p.index) +
-                                      '[CENSORED]' +
-                                      modifiedText.substring(p.index + p.length);
-                    });
-                   
                     state.detectedProfanities.push({
                         blockNumber: block.number,
                         timecodes: block.timecodes,
                         text: block.text,
-                        modifiedText: modifiedText,
+                        modifiedText: block.text,
                         profanities: profanities,
                         severity: determineSeverity(profanities, combinedWords)
                     });
@@ -423,7 +391,7 @@
             const blocks = [];
             let currentBlock = null;
             const lines = content.split('\n');
-           
+
             for (const line of lines) {
                 if (/^\d+$/.test(line.trim())) {
                     if (currentBlock) blocks.push(currentBlock);
@@ -439,9 +407,8 @@
                     }
                 }
             }
-           
+
             if (currentBlock?.text) blocks.push(currentBlock);
-           
             return blocks;
         }
 
@@ -476,19 +443,23 @@
                 const row = document.createElement('tr');
                 row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
                 row.dataset.block = item.blockNumber;
-               
-                let highlightedText = item.text;
-                item.profanities.forEach(p => {
-                    highlightedText = highlightedText.substring(0, p.index) +
-                        `<span class="profanity-highlight" data-word="${p.word}" data-index="${p.index}" data-severity="${p.severity}">${highlightedText.substring(p.index, p.index + p.length)}</span>` +
-                        highlightedText.substring(p.index + p.length);
+
+                let displayText = item.modifiedText;
+                item.profanities.sort((a, b) => b.index - a.index).forEach(p => {
+                    const suggestions = (SUGGESTED_REPLACEMENTS[p.word.toLowerCase()] || ['bleep']).filter(s => s !== '[CENSORED]');
+                    const dropdown = `<select class="replace-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}" data-index="${p.index}" data-word="${p.word}">
+                        <option value="">Keep Original</option>
+                        ${suggestions.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>`;
+                    displayText = displayText.substring(0, p.index) +
+                        `<span class="profanity-highlight" data-severity="${p.severity}">${displayText.substring(p.index, p.index + p.length)}${dropdown}</span>` +
+                        displayText.substring(p.index + p.length);
                 });
-               
+
                 row.innerHTML = `
-                    <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check">✔</span></td>
+                    <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check ${item.modifiedText !== item.text ? 'block' : 'hidden'}">✔</span></td>
                     <td class="py-3 px-2 font-mono">${item.timecodes}</td>
-                    <td class="py-3 px-2">${highlightedText}</td>
-                    <td class="py-3 px-2 replacement-preview">${item.modifiedText}</td>
+                    <td class="py-3 px-2">${displayText}</td>
                     <td class="py-3 px-2 text-center">
                         <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
                             <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
@@ -498,82 +469,157 @@
                     </td>
                     <td class="py-3 px-2 text-center">
                         <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
-                            Replace All with [CENSORED]
+                            Censor All
                         </button>
                     </td>
                 `;
                 elements.resultsBody.appendChild(row);
             });
-           
+
             elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
             elements.loadingGame.classList.add('opacity-0');
-           
+
             setTimeout(() => {
                 elements.loadingGame.classList.add('hidden');
                 elements.resultsSection.classList.remove('hidden');
             }, 300);
         }
 
-        function showTooltip(e, blockNumber, word, index, severity) {
-            const existing = document.querySelector('.tooltip');
-            if (existing) existing.remove();
-           
-            const tooltip = document.createElement('div');
-            tooltip.className = 'tooltip';
-            const suggestions = SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['[CENSORED]'];
-            suggestions.forEach(suggestion => {
-                const option = document.createElement('div');
-                option.textContent = suggestion;
-                option.addEventListener('click', () => {
-                    applyReplacement(blockNumber, word, index, suggestion, severity);
-                    tooltip.remove();
-                    const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-                    row.classList.add('success');
-                    setTimeout(() => row.classList.remove('success'), 1000);
-                });
-                tooltip.appendChild(option);
-            });
-           
-            const rect = e.target.getBoundingClientRect();
-            tooltip.style.top = `${rect.bottom + window.scrollY}px`;
-            tooltip.style.left = `${rect.left + window.scrollX}px`;
-            document.body.appendChild(tooltip);
-           
-            document.addEventListener('click', (event) => {
-                if (!tooltip.contains(event.target) && event.target !== e.target) {
-                    tooltip.remove();
+        function applyReplacement(blockNumber, word, index, replacement, severity) {
+            try {
+                const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                if (!item) throw new Error('Block not found');
+
+                const start = parseInt(index);
+                const wordLength = word.length;
+                const oldValue = item.modifiedText;
+
+                item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
+
+                const profanity = item.profanities.find(p => p.index == index && p.word == word);
+                if (profanity) {
+                    if (replacement !== 'bleep') {
+                        profanity.word = replacement;
+                        profanity.length = replacement.length;
+                        item.profanities.forEach(p => {
+                            if (p.index > start) {
+                                p.index += replacement.length - wordLength;
+                            }
+                        });
+                    } else {
+                        item.profanities = item.profanities.filter(p => p !== profanity);
+                    }
                 }
-            }, { once: true });
+
+                item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+
+                updateRow(blockNumber);
+                generateSeverityChart();
+            } catch (error) {
+                console.error('Error in applyReplacement:', error);
+                alert('Failed to apply replacement. Please try again.');
+            }
         }
 
-        function applyReplacement(blockNumber, word, index, replacement, severity) {
+        function updateRow(blockNumber) {
             const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-            const start = parseInt(index);
-            const wordLength = word.length;
-            const oldValue = item.modifiedText;
-            item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
-            item.severity = severity;
-            item.profanities.find(p => p.index == index && p.word == word).severity = severity;
-           
-            state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
             const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-            row.querySelector('.replacement-preview').textContent = item.modifiedText;
-            row.className = SEVERITY_LEVELS[severity].class;
-            row.dataset.severity = severity;
-            generateSeverityChart();
+            if (!row || !item) return;
+
+            let displayText = item.modifiedText;
+            item.profanities.sort((a, b) => b.index - a.index).forEach(p => {
+                const suggestions = (SUGGESTED_REPLACEMENTS[p.word.toLowerCase()] || ['bleep']).filter(s => s !== '[CENSORED]');
+                const dropdown = `<select class="replace-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}" data-index="${p.index}" data-word="${p.word}">
+                    <option value="">Keep Original</option>
+                    ${suggestions.map(s => `<option value="${s}">${s}</option>`).join('')}
+                </select>`;
+                displayText = displayText.substring(0, p.index) +
+                    `<span class="profanity-highlight" data-severity="${p.severity}">${displayText.substring(p.index, p.index + p.length)}${dropdown}</span>` +
+                    displayText.substring(p.index + p.length);
+            });
+
+            row.innerHTML = `
+                <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check ${item.modifiedText !== item.text ? 'block' : 'hidden'}">✔</span></td>
+                <td class="py-3 px-2 font-mono">${item.timecodes}</td>
+                <td class="py-3 px-2">${displayText}</td>
+                <td class="py-3 px-2 text-center">
+                    <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
+                        <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
+                        <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                        <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
+                    </select>
+                </td>
+                <td class="py-3 px-2 text-center">
+                    <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
+                        Censor All
+                    </button>
+                </td>
+            `;
+            row.classList.add('success');
+            setTimeout(() => row.classList.remove('success'), 1000);
         }
 
         function applyQuickReplacement(blockNumber) {
-            const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
-            const oldValue = item.modifiedText;
-            item.profanities.forEach(p => {
-                item.modifiedText = item.modifiedText.replace(new RegExp(`\\b${p.word}\\b`, 'gi'), '[CENSORED]');
-            });
-            state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
-            const row = document.querySelector(`tr[data-block="${blockNumber}"]`);
-            row.querySelector('.replacement-preview').textContent = item.modifiedText;
-            row.classList.add('success');
-            setTimeout(() => row.classList.remove('success'), 1000);
+            try {
+                const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                if (!item) throw new Error('Block not found');
+
+                const oldValue = item.modifiedText;
+                item.profanities.forEach(p => {
+                    const regex = new RegExp(`\\b${p.word}\\b`, 'gi');
+                    item.modifiedText = item.modifiedText.replace(regex, 'bleep');
+                });
+
+                item.profanities = [];
+                item.severity = 'low';
+
+                state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+                updateRow(blockNumber);
+                generateSeverityChart();
+            } catch (error) {
+                console.error('Error in applyQuickReplacement:', error);
+                alert('Failed to censor block. Please try again.');
+            }
+        }
+
+        function autoReplaceAll() {
+            try {
+                state.detectedProfanities.forEach(item => {
+                    const oldValue = item.modifiedText;
+                    item.profanities.forEach(p => {
+                        const regex = new RegExp(`\\b${p.word}\\b`, 'gi');
+                        item.modifiedText = item.modifiedText.replace(regex, 'bleep');
+                    });
+                    item.profanities = [];
+                    item.severity = 'low';
+                    state.editHistory.push({ blockNumber: item.blockNumber, oldValue, newValue: item.modifiedText });
+                    updateRow(item.blockNumber);
+                });
+                generateSeverityChart();
+            } catch (error) {
+                console.error('Error in autoReplaceAll:', error);
+                alert('Failed to censor all profanities. Please try again.');
+            }
+        }
+
+        function undoLastEdit() {
+            try {
+                const lastEdit = state.editHistory.pop();
+                if (!lastEdit) return;
+
+                const item = state.detectedProfanities.find(item => item.blockNumber == lastEdit.blockNumber);
+                if (item) {
+                    item.modifiedText = lastEdit.oldValue;
+                    item.profanities = findProfanities(item.modifiedText, getCombinedWordList());
+                    item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                    updateRow(lastEdit.blockNumber);
+                    generateSeverityChart();
+                }
+            } catch (error) {
+                console.error('Error in undoLastEdit:', error);
+                alert('Failed to undo edit. Please try again.');
+            }
         }
 
         function generateGameBoard() {
@@ -598,13 +644,13 @@
                 alert('Please select an SRT file first');
                 return false;
             }
-           
+
             const combinedWords = getCombinedWordList();
             if (combinedWords.length === 0) {
                 alert('No profanity words to detect. Please add some words to the list.');
                 return false;
             }
-           
+
             return true;
         }
 
@@ -619,13 +665,13 @@
         function generateCleanedSRT() {
             const blocks = parseSRT(state.originalContent);
             let output = '';
-           
+
             blocks.forEach(block => {
                 const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
                 output += `${block.number}\n${block.timecodes}\n`;
                 output += `${detectedItem ? detectedItem.modifiedText : block.text}\n\n`;
             });
-           
+
             return output.trim();
         }
 
@@ -634,61 +680,13 @@
             const blob = new Blob([state.modifiedContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-           
+
             a.href = url;
             a.download = `censored_${elements.fileInput.files[0].name}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }
-
-        function autoReplaceAll() {
-            state.detectedProfanities.forEach(item => {
-                const oldValue = item.modifiedText;
-                item.modifiedText = item.text.replace(new RegExp(`\\b(${state.profanityWords.map(w => w.word).join('|')})\\b`, 'gi'), '[CENSORED]');
-                state.editHistory.push({ blockNumber: item.blockNumber, oldValue, newValue: item.modifiedText });
-                const row = document.querySelector(`tr[data-block="${item.blockNumber}"]`);
-                if (row) {
-                    row.querySelector('.replacement-preview').textContent = item.modifiedText;
-                    row.classList.add('success');
-                    setTimeout(() => row.classList.remove('success'), 1000);
-                }
-            });
-        }
-
-        function batchReplace() {
-            const word = elements.batchWord.value.trim();
-            const replacement = elements.batchReplacement.value.trim();
-            if (!word || !replacement) {
-                alert('Please enter both a word and a replacement.');
-                return;
-            }
-           
-            state.detectedProfanities.forEach(item => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                if (regex.test(item.modifiedText)) {
-                    const oldValue = item.modifiedText;
-                    item.modifiedText = item.modifiedText.replace(regex, replacement);
-                    state.editHistory.push({ blockNumber: item.blockNumber, oldValue, newValue: item.modifiedText });
-                    const row = document.querySelector(`tr[data-block="${item.blockNumber}"]`);
-                    row.querySelector('.replacement-preview').textContent = item.modifiedText;
-                    row.classList.add('success');
-                    setTimeout(() => row.classList.remove('success'), 1000);
-                }
-            });
-        }
-
-        function undoLastEdit() {
-            const lastEdit = state.editHistory.pop();
-            if (lastEdit) {
-                const item = state.detectedProfanities.find(item => item.blockNumber == lastEdit.blockNumber);
-                item.modifiedText = lastEdit.oldValue;
-                const row = document.querySelector(`tr[data-block="${lastEdit.blockNumber}"]`);
-                row.querySelector('.replacement-preview').textContent = item.modifiedText;
-                row.classList.add('success');
-                setTimeout(() => row.classList.remove('success'), 1000);
-            }
         }
 
         function skipLoadingGame() {
@@ -706,7 +704,7 @@
                     clearInterval(state.game.interval);
                     onComplete();
                 }
-               
+
                 elements.progressBar.style.width = `${state.game.progress}%`;
                 elements.progressText.textContent = `${Math.floor(state.game.progress)}% analyzed`;
             }, 100);
@@ -716,7 +714,7 @@
             state.game.score = 0;
             state.game.progress = 0;
             elements.gameScore.textContent = `Score: ${state.game.score}`;
-           
+
             elements.loadingGame.classList.remove('hidden');
             setTimeout(() => elements.loadingGame.classList.remove('opacity-0'), 10);
         }
@@ -727,33 +725,32 @@
             elements.refreshBtn.addEventListener('click', loadProfanityList);
             elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             elements.autoReplaceBtn.addEventListener('click', autoReplaceAll);
-            elements.batchReplaceBtn.addEventListener('click', batchReplace);
             elements.undoBtn.addEventListener('click', undoLastEdit);
             elements.skipGameBtn.addEventListener('click', skipLoadingGame);
-
-            // Delegated event listeners for table interactions
-            elements.resultsBody.addEventListener('click', (e) => {
-                const highlight = e.target.closest('.profanity-highlight');
-                const quickReplace = e.target.closest('.quick-replace-btn');
-                const severitySelect = e.target.closest('.severity-select');
-
-                if (highlight) {
-                    e.preventDefault();
-                    const blockNumber = highlight.closest('tr').dataset.block;
-                    const word = highlight.dataset.word;
-                    const index = highlight.dataset.index;
-                    const severity = highlight.dataset.severity;
-                    showTooltip(e, blockNumber, word, index, severity);
-                } else if (quickReplace) {
-                    e.preventDefault();
-                    const blockNumber = quickReplace.dataset.block;
-                    applyQuickReplacement(blockNumber);
-                }
+            elements.resetBtn.addEventListener('click', () => {
+                state.detectedProfanities.forEach(item => {
+                    item.modifiedText = item.text;
+                    item.profanities = findProfanities(item.text, getCombinedWordList());
+                    item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                });
+                state.editHistory = [];
+                generateSeverityChart();
+                showResults();
             });
 
             elements.resultsBody.addEventListener('change', (e) => {
+                const replaceSelect = e.target.closest('.replace-select');
                 const severitySelect = e.target.closest('.severity-select');
-                if (severitySelect) {
+
+                if (replaceSelect) {
+                    const blockNumber = replaceSelect.dataset.block;
+                    const word = replaceSelect.dataset.word;
+                    const index = replaceSelect.dataset.index;
+                    const replacement = e.target.value;
+                    if (replacement) {
+                        applyReplacement(blockNumber, word, index, replacement, replaceSelect.closest('.profanity-highlight').dataset.severity);
+                    }
+                } else if (severitySelect) {
                     const blockNumber = severitySelect.dataset.block;
                     const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
                     item.severity = e.target.value;
@@ -763,6 +760,15 @@
                     row.classList.add('success');
                     setTimeout(() => row.classList.remove('success'), 1000);
                     generateSeverityChart();
+                }
+            });
+
+            elements.resultsBody.addEventListener('click', (e) => {
+                const quickReplace = e.target.closest('.quick-replace-btn');
+                if (quickReplace) {
+                    e.preventDefault();
+                    const blockNumber = quickReplace.dataset.block;
+                    applyQuickReplacement(blockNumber);
                 }
             });
         }
