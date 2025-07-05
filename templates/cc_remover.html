@@ -79,15 +79,24 @@
       70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
       100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
+    
+    /* Added for status messages */
+    .status-success {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+    }
+    
+    .status-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
   <div class="card max-w-md w-full rounded-2xl overflow-hidden p-8 relative">
-    <!-- Decorative elements -->
     <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-indigo-500 opacity-10 blur-3xl"></div>
     <div class="absolute -bottom-20 -left-20 w-40 h-40 rounded-full bg-blue-500 opacity-10 blur-3xl"></div>
     
-    <!-- Header -->
     <div class="text-center mb-8 relative z-10">
       <div class="w-20 h-20 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
@@ -100,8 +109,7 @@
       <p class="text-gray-400">Remove closed captions and formatting from your SRT files</p>
     </div>
 
-    <!-- Upload Form -->
-    <form action="/remove-cc" method="post" enctype="multipart/form-data" class="space-y-6 relative z-10">
+    <form id="uploadForm" class="space-y-6 relative z-10">
       <div id="uploadContainer" class="file-upload rounded-xl p-8 text-center cursor-pointer transition-all duration-300">
         <input type="file" name="srtfile" id="fileInput" accept=".srt" required class="hidden">
         <label for="fileInput" class="cursor-pointer flex flex-col items-center">
@@ -126,15 +134,16 @@
         <span>Supports .srt files up to 10MB</span>
       </div>
       
-      <button type="submit" class="btn-primary w-full text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center pulse">
+      <div id="statusMessage" class="hidden text-sm rounded-lg p-3"></div>
+      
+      <button type="submit" id="submitBtn" class="btn-primary w-full text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center pulse">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        Process File
+        <span id="submitText">Process File</span>
       </button>
     </form>
 
-    <!-- Back Link -->
     <div class="mt-8 text-center relative z-10">
       <a href="/" class="text-indigo-400 hover:text-indigo-300 inline-flex items-center text-sm font-medium">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -146,10 +155,13 @@
   </div>
 
   <script>
-    // Enhanced file upload interaction
     const fileInput = document.getElementById('fileInput');
     const uploadContainer = document.getElementById('uploadContainer');
     const fileNameText = document.getElementById('fileNameText');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const statusMessage = document.getElementById('statusMessage');
 
     // Drag and drop functionality
     uploadContainer.addEventListener('dragover', (e) => {
@@ -166,24 +178,151 @@
       uploadContainer.classList.remove('active');
       if (e.dataTransfer.files.length) {
         fileInput.files = e.dataTransfer.files;
-        updateFileName();
+        validateAndUpdateFile();
       }
     });
 
     // File selection handler
-    fileInput.addEventListener('change', updateFileName);
+    fileInput.addEventListener('change', validateAndUpdateFile);
 
-    function updateFileName() {
+    // Form submission handler
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!fileInput.files.length) {
+        showStatus('Please select a file first', 'error');
+        return;
+      }
+      
+      const file = fileInput.files[0];
+      if (!file.name.endsWith('.srt')) {
+        showStatus('Only .srt files are allowed', 'error');
+        return;
+      }
+      
+      if (file.size > 10 * 1024 * 1024) {
+        showStatus('File size exceeds 10MB limit', 'error');
+        return;
+      }
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitText.textContent = 'Processing...';
+      submitBtn.classList.remove('pulse');
+      
+      try {
+        // Read and process the file entirely in the browser
+        const content = await file.text();
+        const cleanedContent = cleanSRT(content);
+        
+        // Create download link
+        const blob = new Blob([cleanedContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create invisible download link and click it
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name.replace('.srt', '_cleaned.srt') || 'cleaned_subtitles.srt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Revoke the object URL after download
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
+        showStatus('File processed successfully! Download started.', 'success');
+      } catch (error) {
+        console.error('Error:', error);
+        showStatus('An error occurred during processing', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitText.textContent = 'Process File';
+        submitBtn.classList.add('pulse');
+      }
+    });
+
+    function cleanSRT(content) {
+      // Enhanced SRT cleaning logic
+      const blocks = content.trim().split('\n\n');
+      const cleanedBlocks = [];
+      
+      for (const block of blocks) {
+        const lines = block.trim().split('\n');
+        if (lines.length < 3) continue;
+        
+        const index = lines[0];
+        const timecode = lines[1];
+        const textLines = lines.slice(2);
+        const cleanedText = [];
+        
+        for (let line of textLines) {
+          // Remove common CC elements
+          line = line
+            .replace(/♪.*?♪/g, '') // Music symbols
+            .replace(/"[^"]*"/g, '') // Quoted text
+            .replace(/\[.*?\]/g, '') // Bracketed text
+            .replace(/\(.*?\)/g, '') // Parentheses text
+            .replace(/\{.*?\}/g, '') // Curly brace text
+            .replace(/<.*?>/g, '') // HTML tags
+            .replace(/^\s*[-–]\s*/, '') // Speaker dashes
+            .replace(/^[A-Z]+\s*:\s*/, '') // Speaker labels
+            .trim();
+            
+          if (line) {
+            cleanedText.push(line);
+          }
+        }
+        
+        if (cleanedText.length > 0) {
+          cleanedBlocks.push(`${index}\n${timecode}\n${cleanedText.join('\n')}`);
+        }
+      }
+      
+      return cleanedBlocks.join('\n\n');
+    }
+
+    function validateAndUpdateFile() {
       if (fileInput.files.length) {
         const file = fileInput.files[0];
+        
+        if (!file.name.endsWith('.srt')) {
+          showStatus('Only .srt files are allowed', 'error');
+          fileNameText.textContent = 'Invalid file type';
+          fileNameText.classList.remove('text-indigo-300');
+          fileNameText.classList.add('text-red-400');
+          return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+          showStatus('File size exceeds 10MB limit', 'error');
+          fileNameText.textContent = 'File too large';
+          fileNameText.classList.remove('text-indigo-300');
+          fileNameText.classList.add('text-red-400');
+          return;
+        }
+        
         fileNameText.textContent = file.name;
         fileNameText.classList.add('text-indigo-300');
-        fileNameText.classList.remove('text-gray-500');
+        fileNameText.classList.remove('text-gray-500', 'text-red-400');
+        statusMessage.classList.add('hidden');
       } else {
         fileNameText.textContent = 'No file selected';
-        fileNameText.classList.remove('text-indigo-300');
+        fileNameText.classList.remove('text-indigo-300', 'text-red-400');
         fileNameText.classList.add('text-gray-500');
       }
+    }
+    
+    function showStatus(message, type) {
+      statusMessage.textContent = message;
+      statusMessage.className = 'text-sm rounded-lg p-3';
+      
+      if (type === 'success') {
+        statusMessage.classList.add('status-success');
+      } else if (type === 'error') {
+        statusMessage.classList.add('status-error');
+      }
+      
+      statusMessage.classList.remove('hidden');
     }
   </script>
 </body>
