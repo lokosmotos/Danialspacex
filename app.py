@@ -1,4 +1,3 @@
-from flask import Flask, render_template, request, redirect, send_file, jsonify
 import os
 import re
 import tempfile
@@ -6,15 +5,19 @@ import json
 import pandas as pd
 import zipfile
 from io import BytesIO
+from flask import Flask, render_template, request, redirect, send_file, jsonify
 from werkzeug.utils import secure_filename
 from opencc import OpenCC
 from langdetect import detect, LangDetectException
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
-app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# ============== MAIN ROUTES ==============
+# ======================
+# MAIN ROUTES
+# ======================
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -55,51 +58,64 @@ def chinese_converter():
 def bilingual_splitter():
     return render_template('split_bilingual.html')
 
-# ============== PROCESSING ROUTES ==============
+# ======================
+# FILE PROCESSING ROUTES
+# ======================
+
 @app.route('/process-cc-removal', methods=['POST'])
 def process_cc_removal():
     if 'srtfile' not in request.files:
-        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+        return jsonify({'error': 'No file uploaded'}), 400
     
     file = request.files['srtfile']
-    
-    if not file or not file.filename.lower().endswith('.srt'):
-        return jsonify({'success': False, 'message': 'Only .srt files are allowed'}), 400
-    
-    try:
-        # Check file size
-        file.seek(0, os.SEEK_END)
-        file_length = file.tell()
-        if file_length > app.config['MAX_CONTENT_LENGTH']:
-            return jsonify({'success': False, 'message': 'File size exceeds 10MB limit'}), 400
-        file.seek(0)
+    if not file or not allowed_file(file.filename, {'srt'}):
+        return jsonify({'error': 'Invalid file type'}), 400
 
+    try:
         content = file.read().decode('utf-8')
-        cleaned_content = remove_cc(content)
-        
-        # Create temporary file
-        temp_fd, temp_path = tempfile.mkstemp(suffix='.srt')
-        try:
-            with os.fdopen(temp_fd, 'w', encoding='utf-8') as temp_file:
-                temp_file.write(cleaned_content)
-            
-            return send_file(
-                temp_path,
-                as_attachment=True,
-                download_name=f"cleaned_{secure_filename(file.filename)}",
-                mimetype='text/plain'
-            )
-        finally:
-            try:
-                os.unlink(temp_path)
-            except:
-                pass
-                
-    except UnicodeDecodeError:
-        return jsonify({'success': False, 'message': 'Invalid file encoding'}), 400
+        cleaned = remove_cc(content)
+        return send_srt_as_download(cleaned, f"cleaned_{secure_filename(file.filename)}")
     except Exception as e:
-        app.logger.error(f"Error processing file: {str(e)}")
-        return jsonify({'success': False, 'message': 'Processing error'}), 500
+        app.logger.error(f"CC Removal Error: {str(e)}")
+        return jsonify({'error': 'Processing failed'}), 500
+
+@app.route('/convert-excel-to-srt', methods=['POST'])
+def convert_excel_to_srt():
+    if 'excelfile' not in request.files:
+        return redirect('/converter')
+    
+    file = request.files['excelfile']
+    if not file or not allowed_file(file.filename, {'xls', 'xlsx'}):
+        return redirect('/converter')
+
+    try:
+        df = pd.read_excel(file)
+        srt_content = excel_to_srt(df)
+        return send_srt_as_download(srt_content, "converted.srt")
+    except Exception as e:
+        app.logger.error(f"Excel to SRT Error: {str(e)}")
+        return redirect('/converter')
+
+@app.route('/convert-srt-to-excel', methods=['POST'])
+def convert_srt_to_excel():
+    if 'srtfile' not in request.files:
+        return redirect('/converter')
+    
+    file = request.files['srtfile']
+    if not file or not allowed_file(file.filename, {'srt'}):
+        return redirect('/converter')
+
+    try:
+        content = file.read().decode('utf-8')
+        df = srt_to_excel(content)
+        return send_excel_as_download(df, "converted.xlsx")
+    except Exception as e:
+        app.logger.error(f"SRT to Excel Error: {str(e)}")
+        return redirect('/converter')
+
+# ======================
+# CHINESE CONVERSION
+# ======================
 
 @app.route('/convert-chinese', methods=['POST'])
 def convert_chinese_form():
@@ -116,141 +132,180 @@ def convert_chinese_form():
                          diffs=diffs,
                          direction=direction)
 
-@app.route('/process-bilingual-srt', methods=['POST'])
-def process_bilingual_srt():
+@app.route('/upload-chinese-srt', methods=['POST'])
+def upload_chinese_srt():
     if 'srtfile' not in request.files:
-        return redirect('/bilingual-splitter')
+        return redirect('/chinese-converter')
     
     file = request.files['srtfile']
-    if not file or not file.filename.lower().endswith('.srt'):
-        return redirect('/bilingual-splitter')
+    if not file or not allowed_file(file.filename, {'srt'}):
+        return redirect('/chinese-converter')
 
     try:
-        content = file.read().decode('utf-8', errors='ignore')
-        lang_blocks = split_subtitles_by_language(content)
+        content = file.read().decode('utf-8')
+        variant = detect_chinese_variant(content)
+        direction = 's2t' if variant == 'zhs' else 't2s'
+        converted, diffs = convert_chinese_variant(content, direction)
+        
+        highlighted_diffs = [{
+            'original': orig,
+            'highlighted': highlight_differences(orig, conv)
+        } for orig, conv in diffs]
 
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
-            for lang, blocks in lang_blocks.items():
-                renumbered = renumber_subtitles('\n\n'.join(blocks))
-                zip_file.writestr(f'{lang}.srt', renumbered.encode('utf-8'))
-
-        zip_buffer.seek(0)
-        return send_file(
-            zip_buffer,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name='separated_languages.zip'
-        )
+        return render_template('converted_chinese_result.html',
+                            original=content,
+                            converted=converted,
+                            highlighted_diffs=highlighted_diffs,
+                            direction=direction,
+                            detected_variant=variant)
     except Exception as e:
-        app.logger.error(f"Error processing bilingual SRT: {str(e)}")
-        return redirect('/bilingual-splitter')
+        app.logger.error(f"Chinese Conversion Error: {str(e)}")
+        return redirect('/chinese-converter')
 
-# ============== HELPER FUNCTIONS ==============
+# ======================
+# PROFANITY CHECKER
+# ======================
+
+@app.route('/check-profanity', methods=['POST'])
+def check_profanity_route():
+    if 'file' not in request.files:
+        return redirect('/profanity-checker')
+    
+    file = request.files['file']
+    if not file or not allowed_file(file.filename, {'srt', 'txt'}):
+        return redirect('/profanity-checker')
+
+    try:
+        content = file.read().decode('utf-8')
+        profanities = check_profanity(content)
+        
+        if profanities:
+            return render_template('edit_profanities.html',
+                                content=content,
+                                profanities=profanities,
+                                original_filename=file.filename)
+        return render_template('profanity_checker.html', message="No profanities found!")
+    except Exception as e:
+        app.logger.error(f"Profanity Check Error: {str(e)}")
+        return redirect('/profanity-checker')
+
+# ======================
+# HELPER FUNCTIONS
+# ======================
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def send_srt_as_download(content, filename):
+    fd, path = tempfile.mkstemp(suffix='.srt')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
+            tmp.write(content)
+        return send_file(path, as_attachment=True, download_name=filename)
+    finally:
+        try:
+            os.unlink(path)
+        except:
+            pass
+
+def send_excel_as_download(df, filename):
+    fd, path = tempfile.mkstemp(suffix='.xlsx')
+    try:
+        with pd.ExcelWriter(path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        return send_file(path, as_attachment=True, download_name=filename)
+    finally:
+        try:
+            os.unlink(path)
+        except:
+            pass
+
 def remove_cc(content):
     blocks = content.strip().split('\n\n')
     cleaned_blocks = []
-
+    
     for block in blocks:
         lines = block.strip().split('\n')
         if len(lines) < 3:
             continue
-
+            
         index = lines[0]
         timecode = lines[1]
-        text_lines = lines[2:]
-        cleaned_text = []
-
-        for line in text_lines:
-            line = re.sub(r'''
-                (?:♪[^♪]*♪)|          # Music symbols
-                (?:"[^"]*")|          # Quoted text
-                (?:\[[^\]]*\])|       # Bracketed text
-                (?:\([^\)]*\))|       # Parentheses text
-                (?:\{[^\}]*\})|       # Curly braces
-                (?:<[^>]*>)|          # HTML tags
-                (?:^\s*[-–]\s*)|      # Speaker dashes
-                (?:^[A-Z]+\s*:\s*)    # Speaker labels
-            ''', '', line, flags=re.VERBOSE)
-            
-            line = line.strip()
-            if line:
-                cleaned_text.append(line)
-
-        if cleaned_text:
-            cleaned_blocks.append(f"{index}\n{timecode}\n" + "\n".join(cleaned_text))
-
+        text_lines = [re.sub(r'\(.*?\)|\[.*?\]|\{.*?\}|<.*?>|♪.*?♪|^[A-Z]+:\s*', '', line).strip() 
+                     for line in lines[2:]]
+        text_lines = [line for line in text_lines if line]
+        
+        if text_lines:
+            cleaned_blocks.append(f"{index}\n{timecode}\n" + "\n".join(text_lines))
+    
     return "\n\n".join(cleaned_blocks)
+
+def excel_to_srt(df):
+    srt_lines = []
+    for i, row in df.iterrows():
+        srt_lines.extend([
+            str(i+1),
+            f"{row['Start Time']} --> {row['End Time']}",
+            str(row['Subtitle Text']),
+            ""
+        ])
+    return "\n".join(srt_lines)
+
+def srt_to_excel(content):
+    pattern = re.compile(r"(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\n\d|\Z)")
+    matches = pattern.findall(content)
+    
+    data = []
+    for match in matches:
+        _, start, end, text = match
+        data.append({
+            'Start Time': start,
+            'End Time': end,
+            'Subtitle Text': text.strip()
+        })
+    
+    return pd.DataFrame(data)
+
+def detect_chinese_variant(text):
+    simplified = "爱边陈当发干国红黄鸡开来马内齐时体为习"
+    traditional = "愛邊陳當發幹國紅黃雞開來馬內齊時體為習"
+    simp_count = sum(1 for char in text if char in simplified)
+    trad_count = sum(1 for char in text if char in traditional)
+    return 'zhs' if simp_count > trad_count else 'zht'
 
 def convert_chinese_variant(text, direction='s2t'):
     cc = OpenCC(direction)
-    converted_lines = []
-    diffs = []
+    converted = cc.convert(text)
+    diffs = [(orig, conv) for orig, conv in zip(text.splitlines(), converted.splitlines()) if orig != conv]
+    return converted, diffs
+
+def highlight_differences(orig, conv):
+    result = []
+    for o, c in zip(orig, conv):
+        if o == c:
+            result.append(c)
+        else:
+            result.append(f'<span class="text-red-500">{c}</span>')
+    return ''.join(result)
+
+def check_profanity(content):
+    try:
+        with open('static/profanity_list.json', 'r', encoding='utf-8') as f:
+            profanity_list = json.load(f)
+    except:
+        profanity_list = ["bad", "word"]  # Fallback list
     
-    for line in text.splitlines():
-        converted = cc.convert(line)
-        converted_lines.append(converted)
-        if line != converted:
-            diffs.append((line, converted))
-            
-    return "\n".join(converted_lines), diffs
-
-def split_subtitles_by_language(content):
-    blocks = content.strip().split('\n\n')
-    lang_blocks = {}
-
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) < 3:
-            continue
-            
-        block_number = lines[0].strip()
-        time_line = lines[1].strip()
-        text_lines = lines[2:]
-        text_by_lang = {}
-
-        for line in text_lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            try:
-                lang = detect(line)
-            except LangDetectException:
-                lang = 'zh' if is_cjk(line) else 'unknown'
-
-            if lang not in text_by_lang:
-                text_by_lang[lang] = []
-            text_by_lang[lang].append(line)
-
-        for lang, lang_lines in text_by_lang.items():
-            srt_block = f"{block_number}\n{time_line}\n" + "\n".join(lang_lines)
-            if lang not in lang_blocks:
-                lang_blocks[lang] = []
-            lang_blocks[lang].append(srt_block)
-
-    return lang_blocks
-
-def renumber_subtitles(content):
-    blocks = content.strip().split('\n\n')
-    new_blocks = []
-    count = 1
-    
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) < 2:
-            continue
-            
-        time_line = lines[1]
-        text_lines = lines[2:]
-        new_block = f"{count}\n{time_line}\n" + "\n".join(text_lines)
-        new_blocks.append(new_block)
-        count += 1
-        
-    return '\n\n'.join(new_blocks)
-
-def is_cjk(text):
-    return bool(re.search(r'[\u4E00-\u9FFF\u3040-\u30FF\u3400-\u4DBF]', text))
+    profanities = []
+    for line_num, line in enumerate(content.splitlines(), 1):
+        for word in profanity_list:
+            if re.search(r'\b' + re.escape(word) + r'\b', line, re.IGNORECASE):
+                profanities.append({
+                    'line_number': line_num,
+                    'line_text': line,
+                    'profanity': word
+                })
+    return profanities
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
