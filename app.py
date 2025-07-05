@@ -323,14 +323,58 @@ def remove_cc(content):
             line = re.sub(r'\[.*?\]', '', line)
             line = re.sub(r'\(.*?\)', '', line)
             line = re.sub(r'<.*?>', '', line)
+            line = re.sub(r'^\s*[-–]\s*', '', line)
+            line = re.sub(r'^[A-Z]+\s*:\s*', '', line)
+            line = line.strip()
 
-            if line.strip():
-                cleaned_text.append(line.strip())
+            if line:
+                cleaned_text.append(line)
 
         if cleaned_text:
             cleaned_blocks.append(f"{index}\n{timecode}\n" + "\n".join(cleaned_text))
 
     return "\n\n".join(cleaned_blocks)
+
+@app.route('/remove-cc', methods=['POST'])
+def process_srt():
+    if 'srtfile' not in request.files:
+        return jsonify({'success': False, 'message': 'No file uploaded'}), 400
+    
+    file = request.files['srtfile']
+    
+    if not file.filename.endswith('.srt'):
+        return jsonify({'success': False, 'message': 'Only .srt files are allowed'}), 400
+    
+    try:
+        # Read and process the file
+        content = file.read().decode('utf-8')
+        cleaned_content = remove_cc(content)
+        
+        # Create a temporary file
+        temp_fd, temp_path = tempfile.mkstemp(suffix='.srt')
+        with os.fdopen(temp_fd, 'w', encoding='utf-8') as temp_file:
+            temp_file.write(cleaned_content)
+        
+        # Send the file for download
+        return send_file(
+            temp_path,
+            as_attachment=True,
+            download_name=f"cleaned_{file.filename}",
+            mimetype='text/plain',
+            etag=False
+        )
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        # Clean up the temporary file
+        try:
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except:
+            pass
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 def detect_chinese_variant(text):
     simplified_chars = "爱边陈当发干国红黄鸡开来马内齐时体为习"
