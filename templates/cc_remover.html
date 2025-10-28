@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remove CC – Danial Space</title>
+  <title>Enhanced CC Remover – Danial Space</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -80,20 +80,78 @@
       100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
     
-    /* Added for status messages */
+    /* Status messages */
     .status-success {
       background: rgba(16, 185, 129, 0.1);
       color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
     
     .status-error {
       background: rgba(239, 68, 68, 0.1);
       color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .status-info {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Results panel */
+    .results-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-out;
+    }
+    
+    .results-panel.open {
+      max-height: 500px;
+    }
+    
+    .removed-item {
+      background: rgba(239, 68, 68, 0.05);
+      border-left: 3px solid #ef4444;
+    }
+    
+    .kept-item {
+      background: rgba(16, 185, 129, 0.05);
+      border-left: 3px solid #10b981;
+    }
+    
+    .qc-warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 3px solid #f59e0b;
+    }
+    
+    .stat-card {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--border);
+    }
+    
+    /* Scrollbar styling */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 3px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 3px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
     }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
-  <div class="card max-w-md w-full rounded-2xl overflow-hidden p-8 relative">
+  <div class="card max-w-4xl w-full rounded-2xl overflow-hidden p-8 relative">
     <div class="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-indigo-500 opacity-10 blur-3xl"></div>
     <div class="absolute -bottom-20 -left-20 w-40 h-40 rounded-full bg-blue-500 opacity-10 blur-3xl"></div>
     
@@ -104,9 +162,9 @@
         </svg>
       </div>
       <h1 class="text-3xl font-bold mb-2 gradient-text">
-        Clean Subtitles
+        Enhanced CC Remover
       </h1>
-      <p class="text-gray-400">Remove closed captions and formatting from your SRT files</p>
+      <p class="text-gray-400">Remove closed captions with detailed tracking and quality control</p>
     </div>
 
     <form id="uploadForm" class="space-y-6 relative z-10">
@@ -140,9 +198,106 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
-        <span id="submitText">Process File</span>
+        <span id="submitText">Process & Analyze File</span>
       </button>
     </form>
+
+    <!-- Results Panel -->
+    <div id="resultsPanel" class="results-panel mt-8 relative z-10">
+      <div class="border border-gray-700 rounded-xl overflow-hidden">
+        <!-- Stats Header -->
+        <div class="bg-gray-900 p-4 border-b border-gray-700">
+          <h3 class="text-lg font-semibold text-white flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Processing Results
+          </h3>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-800">
+          <div class="stat-card rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-white" id="totalBlocks">0</div>
+            <div class="text-xs text-gray-400">Total Blocks</div>
+          </div>
+          <div class="stat-card rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-red-400" id="removedBlocks">0</div>
+            <div class="text-xs text-gray-400">Blocks Removed</div>
+          </div>
+          <div class="stat-card rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-green-400" id="keptBlocks">0</div>
+            <div class="text-xs text-gray-400">Blocks Kept</div>
+          </div>
+          <div class="stat-card rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-yellow-400" id="qcWarnings">0</div>
+            <div class="text-xs text-gray-400">QC Warnings</div>
+          </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="border-b border-gray-700">
+          <div class="flex -mb-px">
+            <button id="removedTab" class="flex-1 py-3 px-4 text-center border-b-2 border-red-500 text-red-400 font-medium">
+              Removed Content
+            </button>
+            <button id="qcTab" class="flex-1 py-3 px-4 text-center border-b-2 border-transparent text-gray-400 font-medium">
+              Quality Control
+            </button>
+            <button id="previewTab" class="flex-1 py-3 px-4 text-center border-b-2 border-transparent text-gray-400 font-medium">
+              Preview
+            </button>
+          </div>
+        </div>
+        
+        <!-- Tab Content -->
+        <div class="max-h-80 overflow-y-auto custom-scrollbar">
+          <!-- Removed Content -->
+          <div id="removedContent" class="p-4 space-y-3">
+            <!-- Content will be populated by JavaScript -->
+          </div>
+          
+          <!-- QC Warnings -->
+          <div id="qcContent" class="p-4 space-y-3 hidden">
+            <!-- Content will be populated by JavaScript -->
+          </div>
+          
+          <!-- Preview -->
+          <div id="previewContent" class="p-4 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 class="text-sm font-semibold text-gray-300 mb-2">Original</h4>
+                <div class="bg-gray-900 rounded p-3 text-sm max-h-60 overflow-y-auto custom-scrollbar" id="originalPreview">
+                  <!-- Original content preview -->
+                </div>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-gray-300 mb-2">Cleaned</h4>
+                <div class="bg-gray-900 rounded p-3 text-sm max-h-60 overflow-y-auto custom-scrollbar" id="cleanedPreview">
+                  <!-- Cleaned content preview -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="bg-gray-900 p-4 border-t border-gray-700 flex justify-between">
+          <button id="toggleDetails" class="text-indigo-400 hover:text-indigo-300 text-sm font-medium flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+            Show Details
+          </button>
+          <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Cleaned SRT
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div class="mt-8 text-center relative z-10">
       <a href="/" class="text-indigo-400 hover:text-indigo-300 inline-flex items-center text-sm font-medium">
@@ -155,6 +310,7 @@
   </div>
 
   <script>
+    // DOM Elements
     const fileInput = document.getElementById('fileInput');
     const uploadContainer = document.getElementById('uploadContainer');
     const fileNameText = document.getElementById('fileNameText');
@@ -162,6 +318,27 @@
     const submitBtn = document.getElementById('submitBtn');
     const submitText = document.getElementById('submitText');
     const statusMessage = document.getElementById('statusMessage');
+    const resultsPanel = document.getElementById('resultsPanel');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const toggleDetails = document.getElementById('toggleDetails');
+
+    // Tab elements
+    const removedTab = document.getElementById('removedTab');
+    const qcTab = document.getElementById('qcTab');
+    const previewTab = document.getElementById('previewTab');
+    const removedContent = document.getElementById('removedContent');
+    const qcContent = document.getElementById('qcContent');
+    const previewContent = document.getElementById('previewContent');
+
+    // Stat elements
+    const totalBlocksEl = document.getElementById('totalBlocks');
+    const removedBlocksEl = document.getElementById('removedBlocks');
+    const keptBlocksEl = document.getElementById('keptBlocks');
+    const qcWarningsEl = document.getElementById('qcWarnings');
+
+    // Global variables
+    let currentCleanedContent = '';
+    let processingResults = null;
 
     // Drag and drop functionality
     uploadContainer.addEventListener('dragover', (e) => {
@@ -184,6 +361,51 @@
 
     // File selection handler
     fileInput.addEventListener('change', validateAndUpdateFile);
+
+    // Tab switching
+    removedTab.addEventListener('click', () => switchTab('removed'));
+    qcTab.addEventListener('click', () => switchTab('qc'));
+    previewTab.addEventListener('click', () => switchTab('preview'));
+
+    // Toggle details
+    toggleDetails.addEventListener('click', () => {
+      const isOpen = resultsPanel.classList.contains('open');
+      if (isOpen) {
+        resultsPanel.classList.remove('open');
+        toggleDetails.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+          Show Details
+        `;
+      } else {
+        resultsPanel.classList.add('open');
+        toggleDetails.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+          </svg>
+          Hide Details
+        `;
+      }
+    });
+
+    // Download cleaned file
+    downloadBtn.addEventListener('click', () => {
+      if (!currentCleanedContent) return;
+      
+      const file = fileInput.files[0];
+      const blob = new Blob([currentCleanedContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace('.srt', '_cleaned.srt') || 'cleaned_subtitles.srt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showStatus('Download started!', 'success');
+    });
 
     // Form submission handler
     uploadForm.addEventListener('submit', async (e) => {
@@ -211,74 +433,276 @@
       submitBtn.classList.remove('pulse');
       
       try {
-        // Read and process the file entirely in the browser
         const content = await file.text();
-        const cleanedContent = cleanSRT(content);
+        processingResults = cleanSRTWithTracking(content);
+        currentCleanedContent = processingResults.cleanedContent;
         
-        // Create download link
-        const blob = new Blob([cleanedContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        // Update statistics
+        updateStatistics(processingResults);
         
-        // Create invisible download link and click it
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name.replace('.srt', '_cleaned.srt') || 'cleaned_subtitles.srt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Populate results
+        populateRemovedContent(processingResults.removedItems);
+        populateQCWarnings(processingResults.qcWarnings);
+        populatePreview(content, currentCleanedContent);
         
-        // Revoke the object URL after download
-        setTimeout(() => URL.revokeObjectURL(url), 100);
+        // Show results panel
+        resultsPanel.classList.add('open');
+        toggleDetails.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+          </svg>
+          Hide Details
+        `;
         
-        showStatus('File processed successfully! Download started.', 'success');
+        showStatus(`Processing complete! ${processingResults.removedItems.length} items removed, ${processingResults.qcWarnings.length} QC warnings`, 'success');
       } catch (error) {
         console.error('Error:', error);
         showStatus('An error occurred during processing', 'error');
       } finally {
         submitBtn.disabled = false;
-        submitText.textContent = 'Process File';
+        submitText.textContent = 'Process & Analyze File';
         submitBtn.classList.add('pulse');
       }
     });
 
-    function cleanSRT(content) {
-      // Enhanced SRT cleaning logic
+    function cleanSRTWithTracking(content) {
       const blocks = content.trim().split('\n\n');
       const cleanedBlocks = [];
+      const removedItems = [];
+      const qcWarnings = [];
+      
+      let totalBlocks = 0;
+      let removedBlocks = 0;
       
       for (const block of blocks) {
+        totalBlocks++;
         const lines = block.trim().split('\n');
-        if (lines.length < 3) continue;
+        if (lines.length < 3) {
+          removedBlocks++;
+          removedItems.push({
+            type: 'block',
+            reason: 'Invalid block structure',
+            content: block,
+            blockNumber: lines[0] || 'Unknown'
+          });
+          continue;
+        }
         
         const index = lines[0];
         const timecode = lines[1];
         const textLines = lines.slice(2);
         const cleanedText = [];
+        const blockRemovals = [];
         
         for (let line of textLines) {
-          // Remove common CC elements
-          line = line
-            .replace(/♪.*?♪/g, '') // Music symbols
-            .replace(/"[^"]*"/g, '') // Quoted text
-            .replace(/\[.*?\]/g, '') // Bracketed text
-            .replace(/\(.*?\)/g, '') // Parentheses text
-            .replace(/\{.*?\}/g, '') // Curly brace text
-            .replace(/<.*?>/g, '') // HTML tags
-            .replace(/^\s*[-–]\s*/, '') // Speaker dashes
-            .replace(/^[A-Z]+\s*:\s*/, '') // Speaker labels
-            .trim();
-            
+          const originalLine = line;
+          let wasModified = false;
+          
+          // Track and remove different types of CC elements
+          const patterns = [
+            { pattern: /(♪.*?♪)/g, type: 'music symbols' },
+            { pattern: /("[^"]*")/g, type: 'quoted text' },
+            { pattern: /(\[.*?\])/g, type: 'bracketed text' },
+            { pattern: /(\(.*?\))/g, type: 'parentheses text' },
+            { pattern: /(\{.*?\})/g, type: 'curly brace text' },
+            { pattern: /(<.*?>)/g, type: 'HTML tags' },
+            { pattern: /(^\s*[-–]\s*)/g, type: 'speaker dashes' },
+            { pattern: /(^[A-Z]+\s*:\s*)/g, type: 'speaker labels' },
+            { pattern: /(\b(MUSIC|SFX|APPLAUSE|LAUGHTER)\b)/gi, type: 'sound effects' }
+          ];
+          
+          for (const { pattern, type } of patterns) {
+            const matches = line.match(pattern);
+            if (matches) {
+              matches.forEach(match => {
+                blockRemovals.push({
+                  type: type,
+                  content: match,
+                  originalLine: originalLine,
+                  blockNumber: index
+                });
+              });
+              line = line.replace(pattern, '');
+              wasModified = true;
+            }
+          }
+          
+          line = line.trim();
+          
           if (line) {
             cleanedText.push(line);
+          } else if (wasModified) {
+            // Entire line was removed
+            blockRemovals.push({
+              type: 'full line',
+              content: originalLine,
+              originalLine: originalLine,
+              blockNumber: index,
+              reason: 'Line contained only CC elements'
+            });
           }
         }
         
         if (cleanedText.length > 0) {
           cleanedBlocks.push(`${index}\n${timecode}\n${cleanedText.join('\n')}`);
+          
+          // Add block removals to main list
+          removedItems.push(...blockRemovals);
+          
+          // QC checks
+          if (cleanedText.length === 1 && cleanedText[0].length < 10) {
+            qcWarnings.push({
+              type: 'short_line',
+              blockNumber: index,
+              content: cleanedText[0],
+              message: 'Very short subtitle line - consider reviewing'
+            });
+          }
+          
+          if (cleanedText.some(text => text.length > 80)) {
+            qcWarnings.push({
+              type: 'long_line',
+              blockNumber: index,
+              content: cleanedText.find(text => text.length > 80),
+              message: 'Long subtitle line - may need splitting'
+            });
+          }
+        } else {
+          removedBlocks++;
+          removedItems.push({
+            type: 'block',
+            reason: 'All text content removed',
+            content: block,
+            blockNumber: index
+          });
         }
       }
       
-      return cleanedBlocks.join('\n\n');
+      // Additional QC checks
+      if (removedBlocks / totalBlocks > 0.3) {
+        qcWarnings.push({
+          type: 'high_removal_rate',
+          message: `High removal rate: ${Math.round((removedBlocks / totalBlocks) * 100)}% of blocks were removed`
+        });
+      }
+      
+      return {
+        cleanedContent: cleanedBlocks.join('\n\n'),
+        removedItems,
+        qcWarnings,
+        statistics: {
+          totalBlocks,
+          removedBlocks,
+          keptBlocks: totalBlocks - removedBlocks,
+          qcWarnings: qcWarnings.length
+        }
+      };
+    }
+
+    function updateStatistics(results) {
+      const stats = results.statistics;
+      totalBlocksEl.textContent = stats.totalBlocks;
+      removedBlocksEl.textContent = stats.removedBlocks;
+      keptBlocksEl.textContent = stats.keptBlocks;
+      qcWarningsEl.textContent = stats.qcWarnings;
+    }
+
+    function populateRemovedContent(removedItems) {
+      removedContent.innerHTML = '';
+      
+      if (removedItems.length === 0) {
+        removedContent.innerHTML = `
+          <div class="text-center text-gray-500 py-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            No content was removed - file was already clean!
+          </div>
+        `;
+        return;
+      }
+      
+      removedItems.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'removed-item p-3 rounded text-sm';
+        div.innerHTML = `
+          <div class="flex justify-between items-start mb-1">
+            <span class="font-medium text-red-300">${item.type}</span>
+            <span class="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">Block ${item.blockNumber}</span>
+          </div>
+          <div class="text-gray-300 mb-1">${item.content}</div>
+          ${item.reason ? `<div class="text-xs text-gray-400">Reason: ${item.reason}</div>` : ''}
+          ${item.originalLine && item.originalLine !== item.content ? `
+            <div class="text-xs text-gray-500 mt-1">From: ${item.originalLine}</div>
+          ` : ''}
+        `;
+        removedContent.appendChild(div);
+      });
+    }
+
+    function populateQCWarnings(qcWarnings) {
+      qcContent.innerHTML = '';
+      
+      if (qcWarnings.length === 0) {
+        qcContent.innerHTML = `
+          <div class="text-center text-gray-500 py-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            No quality control issues found!
+          </div>
+        `;
+        return;
+      }
+      
+      qcWarnings.forEach((warning, index) => {
+        const div = document.createElement('div');
+        div.className = 'qc-warning p-3 rounded text-sm';
+        div.innerHTML = `
+          <div class="flex justify-between items-start mb-1">
+            <span class="font-medium text-yellow-300">${warning.type.replace('_', ' ').toUpperCase()}</span>
+            ${warning.blockNumber ? `<span class="text-xs bg-yellow-900 text-yellow-200 px-2 py-1 rounded">Block ${warning.blockNumber}</span>` : ''}
+          </div>
+          <div class="text-gray-300 mb-1">${warning.message}</div>
+          ${warning.content ? `<div class="text-xs text-gray-400 bg-yellow-900/20 p-2 rounded mt-1">Content: "${warning.content}"</div>` : ''}
+        `;
+        qcContent.appendChild(div);
+      });
+    }
+
+    function populatePreview(original, cleaned) {
+      const originalLines = original.split('\n').slice(0, 20); // Show first 20 lines
+      const cleanedLines = cleaned.split('\n').slice(0, 20);
+      
+      originalPreview.textContent = originalLines.join('\n');
+      cleanedPreview.textContent = cleanedLines.join('\n');
+    }
+
+    function switchTab(tab) {
+      // Reset all tabs
+      [removedTab, qcTab, previewTab].forEach(t => {
+        t.classList.remove('border-red-500', 'border-yellow-500', 'border-blue-500', 'text-red-400', 'text-yellow-400', 'text-blue-400');
+        t.classList.add('border-transparent', 'text-gray-400');
+      });
+      
+      // Hide all content
+      [removedContent, qcContent, previewContent].forEach(c => c.classList.add('hidden'));
+      
+      // Activate selected tab
+      switch(tab) {
+        case 'removed':
+          removedTab.classList.add('border-red-500', 'text-red-400');
+          removedContent.classList.remove('hidden');
+          break;
+        case 'qc':
+          qcTab.classList.add('border-yellow-500', 'text-yellow-400');
+          qcContent.classList.remove('hidden');
+          break;
+        case 'preview':
+          previewTab.classList.add('border-blue-500', 'text-blue-400');
+          previewContent.classList.remove('hidden');
+          break;
+      }
     }
 
     function validateAndUpdateFile() {
@@ -305,6 +729,15 @@
         fileNameText.classList.add('text-indigo-300');
         fileNameText.classList.remove('text-gray-500', 'text-red-400');
         statusMessage.classList.add('hidden');
+        
+        // Hide results panel when new file is selected
+        resultsPanel.classList.remove('open');
+        toggleDetails.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+          Show Details
+        `;
       } else {
         fileNameText.textContent = 'No file selected';
         fileNameText.classList.remove('text-indigo-300', 'text-red-400');
@@ -320,6 +753,8 @@
         statusMessage.classList.add('status-success');
       } else if (type === 'error') {
         statusMessage.classList.add('status-error');
+      } else if (type === 'info') {
+        statusMessage.classList.add('status-info');
       }
       
       statusMessage.classList.remove('hidden');
