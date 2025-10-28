@@ -16,32 +16,48 @@
             Converted to <strong class="text-green-400 uppercase">{{ direction[-1] }}</strong>
         </p>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-300">Original SRT</h2>
-                <div class="p-4 border border-gray-700 rounded-xl h-96 overflow-y-scroll bg-gray-700 text-sm whitespace-pre-wrap">
-                    {{ original }}
-                </div>
-            </div>
-            <div>
-                <h2 class="text-lg font-semibold mb-2 text-gray-300">Converted SRT</h2>
-                <div class="p-4 border border-gray-700 rounded-xl h-96 overflow-y-scroll bg-gray-700 text-sm whitespace-pre-wrap text-green-200">
-                    {{ converted }}
-                </div>
-            </div>
+        <!-- Your existing code above -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+        <h2 class="text-lg font-semibold mb-2 text-gray-300">Original SRT</h2>
+        <div class="p-4 border border-gray-700 rounded-xl h-96 overflow-y-scroll bg-gray-700 text-sm whitespace-pre-wrap">
+            {{ original }}
         </div>
+    </div>
+    <div>
+        <h2 class="text-lg font-semibold mb-2 text-gray-300">Converted SRT</h2>
+        <div class="p-4 border border-gray-700 rounded-xl h-96 overflow-y-scroll bg-gray-700 text-sm whitespace-pre-wrap text-green-200">
+            {{ converted }}
+        </div>
+    </div>
+</div>
 
-        <form method="POST" action="/download-converted" class="mt-8 text-center">
-            <input type="hidden" name="converted" value="{{ converted }}">
-            <button 
-                type="submit" 
-                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow transition duration-200"
-            >
-                📥 Download Converted SRT
-            </button>
-        </form>
+<!-- REPLACE THE FORM SECTION WITH THIS -->
+<div class="mt-8 text-center">
+    <button 
+        onclick="downloadSRT()"
+        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow transition duration-200"
+    >
+        📥 Download Converted SRT
+    </button>
+</div>
 
-        {% if highlighted_diffs %}
+<script>
+function downloadSRT() {
+    const convertedText = `{{ converted }}`;
+    const blob = new Blob([convertedText], { type: 'text/plain; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'converted_subtitles.srt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+</script>
+
+{% if highlighted_diffs %}
 <div class="mt-10">
     <h3 class="text-lg font-semibold mb-2 text-red-600">🔍 Changed Lines</h3>
     <div class="bg-gray-900 text-white p-4 border rounded shadow text-sm font-mono">
@@ -56,9 +72,6 @@
     </div>
 </div>
 {% endif %}
-
-
-    </div>
 
 </body>
 </html>
