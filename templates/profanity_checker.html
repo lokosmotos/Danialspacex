@@ -77,10 +77,40 @@
         tr.success .success-check {
             display: block;
         }
+        .validation-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.success {
+            background-color: #10b981;
+        }
+        .toast.error {
+            background-color: #ef4444;
+        }
+        .toast.warning {
+            background-color: #eab308;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
     <div class="max-w-5xl mx-auto">
+        <!-- Toast Notifications -->
+        <div id="toastContainer"></div>
+        
         <!-- Header -->
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
@@ -90,7 +120,7 @@
         <!-- Upload Section -->
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
             <form id="uploadForm" class="space-y-4">
-                <div class="file-upload rounded-lg p-8 text-center cursor-pointer">
+                <div class="file-upload rounded-lg p-8 text-center cursor-pointer" id="fileUploadArea">
                     <input type="file" name="file" id="fileInput" accept=".srt" required class="hidden">
                     <label for="fileInput" class="cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -106,9 +136,14 @@
                 <div class="bg-gray-700/30 p-4 rounded-lg">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-semibold text-red-400">Profanity Words to Detect</h3>
-                        <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
-                            ↻ Refresh List
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                ↻ Refresh List
+                            </button>
+                            <button type="button" id="toggleCustomBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                + Custom Words
+                            </button>
+                        </div>
                     </div>
                     <div id="profanityListStatus" class="text-sm mb-2">
                         Loading profanity list from static/profanity_list.json...
@@ -269,6 +304,7 @@
             fileName: document.getElementById('fileName'),
             analyzeBtn: document.getElementById('analyzeBtn'),
             refreshBtn: document.getElementById('refreshListBtn'),
+            toggleCustomBtn: document.getElementById('toggleCustomBtn'),
             loadingGame: document.getElementById('loadingGame'),
             gameBoard: document.getElementById('gameBoard'),
             progressBar: document.getElementById('progressBar'),
@@ -284,7 +320,9 @@
             autoReplaceBtn: document.getElementById('autoReplaceBtn'),
             undoBtn: document.getElementById('undoBtn'),
             resetBtn: document.getElementById('resetBtn'),
-            skipGameBtn: document.getElementById('skipGameBtn')
+            skipGameBtn: document.getElementById('skipGameBtn'),
+            fileUploadArea: document.getElementById('fileUploadArea'),
+            toastContainer: document.getElementById('toastContainer')
         };
 
         // ========== Initialization ==========
@@ -294,14 +332,121 @@
             generateGameBoard();
         });
 
+        // ========== Toast Notification System ==========
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            elements.toastContainer.appendChild(toast);
+            
+            // Show toast
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
+
+        // ========== Validation System ==========
+        function validateFileInput() {
+            if (!elements.fileInput.files.length) {
+                showToast('Please select an SRT file first', 'error');
+                elements.fileUploadArea.classList.add('validation-error');
+                return false;
+            }
+
+            const file = elements.fileInput.files[0];
+            if (!file.name.toLowerCase().endsWith('.srt')) {
+                showToast('Please select a valid .srt file', 'error');
+                elements.fileUploadArea.classList.add('validation-error');
+                return false;
+            }
+
+            elements.fileUploadArea.classList.remove('validation-error');
+            return true;
+        }
+
+        function validateProfanityList() {
+            const combinedWords = getCombinedWordList();
+            if (combinedWords.length === 0) {
+                showToast('No profanity words to detect. Please add some words to the list.', 'warning');
+                return false;
+            }
+            
+            // Check for duplicates
+            const wordSet = new Set();
+            const duplicates = [];
+            
+            combinedWords.forEach(wordObj => {
+                if (wordSet.has(wordObj.word.toLowerCase())) {
+                    duplicates.push(wordObj.word);
+                }
+                wordSet.add(wordObj.word.toLowerCase());
+            });
+            
+            if (duplicates.length > 0) {
+                console.warn(`Duplicate words found: ${duplicates.join(', ')}`);
+            }
+            
+            return true;
+        }
+
+        function validateCustomWords() {
+            const customWordsText = elements.customWordsInput.value.trim();
+            if (!customWordsText) return true;
+            
+            const words = customWordsText.split(',');
+            const errors = [];
+            
+            words.forEach(word => {
+                const trimmed = word.trim();
+                if (!trimmed) return;
+                
+                const parts = trimmed.split(':');
+                if (parts.length > 2) {
+                    errors.push(`Invalid format: "${trimmed}"`);
+                }
+                
+                if (parts.length === 2) {
+                    const severity = parts[1].trim().toLowerCase();
+                    if (!['high', 'medium', 'low'].includes(severity)) {
+                        errors.push(`Invalid severity: "${severity}" in "${trimmed}"`);
+                    }
+                }
+            });
+            
+            if (errors.length > 0) {
+                showToast(`Custom word errors: ${errors.join('; ')}`, 'error');
+                elements.customWordsInput.classList.add('validation-error');
+                return false;
+            }
+            
+            elements.customWordsInput.classList.remove('validation-error');
+            return true;
+        }
+
         // ========== Chart Generation ==========
         function generateSeverityChart() {
+            const ctx = document.getElementById('severityChart');
+            
+            // Destroy existing chart if it exists
+            if (ctx.chart) {
+                ctx.chart.destroy();
+            }
+            
             const severityCounts = { high: 0, medium: 0, low: 0 };
             state.detectedProfanities.forEach(item => {
                 severityCounts[item.severity]++;
             });
 
-            new Chart(document.getElementById('severityChart'), {
+            ctx.chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['High', 'Medium', 'Low'],
@@ -314,11 +459,26 @@
                     }]
                 },
                 options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Count' } },
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Count' },
+                            ticks: { stepSize: 1 }
+                        },
                         x: { title: { display: true, text: 'Severity' } }
                     },
-                    plugins: { legend: { display: false } }
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -326,45 +486,109 @@
         // ========== Core Functions ==========
         async function loadProfanityList() {
             try {
+                elements.profanityStatus.textContent = 'Loading profanity list...';
+                
+                // Try to load from external file first
                 const response = await fetch('/static/profanity_list.json');
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
                 const data = await response.json();
-                if (!validateProfanityList(data)) throw new Error('Invalid JSON format');
-                state.profanityWords = Array.isArray(data) ? data.map(word => ({ word, severity: 'high' })) : data.words;
+                if (!validateProfanityListData(data)) throw new Error('Invalid JSON format');
+                
+                state.profanityWords = Array.isArray(data) ? 
+                    data.map(word => ({ word, severity: 'high' })) : 
+                    data.words;
+                
                 showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
+                showToast('Profanity list loaded successfully', 'success');
+                
             } catch (error) {
                 console.error('Loading failed:', error);
                 state.profanityWords = DEFAULT_WORDS;
                 showErrorMessage(`Using default list (${DEFAULT_WORDS.length} words)`);
+                showToast('Using default profanity list', 'warning');
             }
-            elements.customContainer.classList.remove('hidden');
         }
 
-        function validateProfanityList(data) {
-            return Array.isArray(data) || (data?.words && Array.isArray(data.words));
+        function validateProfanityListData(data) {
+            if (Array.isArray(data)) {
+                return data.every(item => typeof item === 'string' || (item && typeof item.word === 'string'));
+            }
+            return data && data.words && Array.isArray(data.words);
         }
 
         function getCombinedWordList() {
-            const customWords = elements.customWordsInput.value
+            const customWords = parseCustomWords();
+            return [...state.profanityWords, ...customWords];
+        }
+
+        function parseCustomWords() {
+            const customWordsText = elements.customWordsInput.value.trim();
+            if (!customWordsText) return [];
+            
+            return customWordsText
                 .split(',')
                 .map(w => {
-                    const [word, severity = 'high'] = w.trim().split(':');
-                    return { word, severity: SEVERITY_LEVELS[severity] ? severity : 'high' };
+                    const [word, severity = 'high'] = w.trim().split(':').map(s => s.trim());
+                    return { 
+                        word, 
+                        severity: SEVERITY_LEVELS[severity.toLowerCase()] ? severity.toLowerCase() : 'high' 
+                    };
                 })
-                .filter(w => w.word);
-            return [...new Set([...state.profanityWords, ...customWords].map(w => JSON.stringify(w)))].map(JSON.parse);
+                .filter(w => w.word && w.word.length > 0);
         }
 
         // ========== SRT Processing ==========
         async function analyzeContent() {
-            if (!validateFileInput()) return;
-            startLoadingAnimation();
-            state.originalContent = await readFile(elements.fileInput.files[0]);
-            simulateProgress(() => {
-                processSRTContent();
-                showResults();
-                generateSeverityChart();
-            });
+            // Validate all inputs before proceeding
+            if (!validateFileInput() || !validateProfanityList() || !validateCustomWords()) {
+                return;
+            }
+            
+            try {
+                startLoadingAnimation();
+                state.originalContent = await readFile(elements.fileInput.files[0]);
+                
+                // Validate SRT content
+                if (!validateSRTContent(state.originalContent)) {
+                    showToast('Invalid SRT file format', 'error');
+                    skipLoadingGame();
+                    return;
+                }
+                
+                simulateProgress(() => {
+                    processSRTContent();
+                    showResults();
+                    generateSeverityChart();
+                    showToast('Analysis complete', 'success');
+                });
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                showToast('Failed to analyze file', 'error');
+                skipLoadingGame();
+            }
+        }
+
+        function validateSRTContent(content) {
+            if (!content || content.trim().length === 0) {
+                return false;
+            }
+            
+            // Basic SRT validation - check for at least one subtitle block
+            const blocks = content.split(/\n\s*\n/);
+            if (blocks.length < 1) return false;
+            
+            // Check if first block has expected structure
+            const firstBlock = blocks[0].trim().split('\n');
+            if (firstBlock.length < 3) return false;
+            
+            // Check if first line is a number
+            if (!/^\d+$/.test(firstBlock[0].trim())) return false;
+            
+            // Check if second line has timecode format
+            if (!firstBlock[1].includes('-->')) return false;
+            
+            return true;
         }
 
         function processSRTContent() {
@@ -389,33 +613,44 @@
 
         function parseSRT(content) {
             const blocks = [];
-            let currentBlock = null;
-            const lines = content.split('\n');
-
-            for (const line of lines) {
-                if (/^\d+$/.test(line.trim())) {
-                    if (currentBlock) blocks.push(currentBlock);
-                    currentBlock = { number: parseInt(line.trim()), text: '', timecodes: '' };
-                } else if (currentBlock?.timecodes === '' && line.includes('-->')) {
-                    currentBlock.timecodes = line.trim();
-                } else if (currentBlock) {
-                    if (line.trim() === '') {
-                        if (currentBlock.text) blocks.push(currentBlock);
-                        currentBlock = null;
-                    } else {
-                        currentBlock.text += (currentBlock.text ? '\n' : '') + line.trim();
+            const blockTexts = content.split(/\n\s*\n/).filter(block => block.trim());
+            
+            blockTexts.forEach(blockText => {
+                const lines = blockText.split('\n').filter(line => line.trim());
+                if (lines.length < 3) return; // Skip invalid blocks
+                
+                const number = parseInt(lines[0].trim());
+                if (isNaN(number)) return; // Skip if first line isn't a number
+                
+                let timecodes = '';
+                let textLines = [];
+                
+                // Find timecode line
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].includes('-->')) {
+                        timecodes = lines[i].trim();
+                        textLines = lines.slice(i + 1);
+                        break;
                     }
                 }
-            }
-
-            if (currentBlock?.text) blocks.push(currentBlock);
+                
+                if (!timecodes) return; // Skip if no timecode found
+                
+                blocks.push({
+                    number: number,
+                    timecodes: timecodes,
+                    text: textLines.join('\n')
+                });
+            });
+            
             return blocks;
         }
 
         function findProfanities(text, wordList) {
             const found = [];
             wordList.forEach(({ word, severity }) => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                // Use word boundaries to avoid partial matches
+                const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'gi');
                 let match;
                 while ((match = regex.exec(text)) !== null) {
                     found.push({
@@ -429,52 +664,80 @@
             return found;
         }
 
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
         function determineSeverity(profanities, wordList) {
-            const highestSeverity = profanities.reduce((max, p) => {
-                const wordSeverity = wordList.find(w => w.word.toLowerCase() === p.word.toLowerCase())?.severity || 'high';
-                return ['high', 'medium', 'low'].indexOf(wordSeverity) < ['high', 'medium', 'low'].indexOf(max) ? wordSeverity : max;
-            }, 'low');
-            return highestSeverity;
+            if (profanities.length === 0) return 'low';
+            
+            const severities = profanities.map(p => {
+                const wordSeverity = wordList.find(w => 
+                    w.word.toLowerCase() === p.word.toLowerCase()
+                )?.severity || 'high';
+                return wordSeverity;
+            });
+            
+            // Return the highest severity found
+            if (severities.includes('high')) return 'high';
+            if (severities.includes('medium')) return 'medium';
+            return 'low';
         }
 
         function showResults() {
             elements.resultsBody.innerHTML = '';
-            state.detectedProfanities.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
-                row.dataset.block = item.blockNumber;
-
-                let displayText = item.modifiedText;
-                item.profanities.sort((a, b) => b.index - a.index).forEach(p => {
-                    const suggestions = (SUGGESTED_REPLACEMENTS[p.word.toLowerCase()] || ['bleep']).filter(s => s !== '[CENSORED]');
-                    const dropdown = `<select class="replace-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}" data-index="${p.index}" data-word="${p.word}">
-                        <option value="">Keep Original</option>
-                        ${suggestions.map(s => `<option value="${s}">${s}</option>`).join('')}
-                    </select>`;
-                    displayText = displayText.substring(0, p.index) +
-                        `<span class="profanity-highlight" data-severity="${p.severity}">${displayText.substring(p.index, p.index + p.length)}${dropdown}</span>` +
-                        displayText.substring(p.index + p.length);
-                });
-
-                row.innerHTML = `
-                    <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check ${item.modifiedText !== item.text ? 'block' : 'hidden'}">✔</span></td>
-                    <td class="py-3 px-2 font-mono">${item.timecodes}</td>
-                    <td class="py-3 px-2">${displayText}</td>
-                    <td class="py-3 px-2 text-center">
-                        <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
-                            <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
-                            <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
-                            <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
-                        </select>
-                    </td>
-                    <td class="py-3 px-2 text-center">
-                        <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
-                            Censor All
-                        </button>
-                    </td>
+            
+            if (state.detectedProfanities.length === 0) {
+                elements.resultsBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-lg">No profanities detected!</p>
+                            <p class="text-sm mt-1">Your SRT file is clean.</p>
+                        </td>
+                    </tr>
                 `;
-                elements.resultsBody.appendChild(row);
-            });
+            } else {
+                state.detectedProfanities.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = item.severity ? SEVERITY_LEVELS[item.severity].class : '';
+                    row.dataset.block = item.blockNumber;
+
+                    let displayText = item.modifiedText;
+                    // Sort by index in descending order to avoid issues with replacement
+                    item.profanities.sort((a, b) => b.index - a.index).forEach(p => {
+                        const suggestions = (SUGGESTED_REPLACEMENTS[p.word.toLowerCase()] || ['bleep']).filter(s => s !== '[CENSORED]');
+                        const dropdown = `<select class="replace-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}" data-index="${p.index}" data-word="${p.word}">
+                            <option value="">Keep Original</option>
+                            ${suggestions.map(s => `<option value="${s}">${s}</option>`).join('')}
+                        </select>`;
+                        displayText = displayText.substring(0, p.index) +
+                            `<span class="profanity-highlight" data-severity="${p.severity}">${displayText.substring(p.index, p.index + p.length)}${dropdown}</span>` +
+                            displayText.substring(p.index + p.length);
+                    });
+
+                    row.innerHTML = `
+                        <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check ${item.modifiedText !== item.text ? 'block' : 'hidden'}">✔</span></td>
+                        <td class="py-3 px-2 font-mono">${item.timecodes}</td>
+                        <td class="py-3 px-2">${displayText}</td>
+                        <td class="py-3 px-2 text-center">
+                            <select class="severity-select bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs" data-block="${item.blockNumber}">
+                                <option value="high" ${item.severity === 'high' ? 'selected' : ''}>High</option>
+                                <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Medium</option>
+                                <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Low</option>
+                            </select>
+                        </td>
+                        <td class="py-3 px-2 text-center">
+                            <button class="quick-replace-btn text-gray-400 hover:text-white text-sm" data-block="${item.blockNumber}">
+                                Censor All
+                            </button>
+                        </td>
+                    `;
+                    elements.resultsBody.appendChild(row);
+                });
+            }
 
             elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
             elements.loadingGame.classList.add('opacity-0');
@@ -494,31 +757,37 @@
                 const wordLength = word.length;
                 const oldValue = item.modifiedText;
 
-                item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
+                if (replacement) {
+                    item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
 
-                const profanity = item.profanities.find(p => p.index == index && p.word == word);
-                if (profanity) {
-                    if (replacement !== 'bleep') {
-                        profanity.word = replacement;
-                        profanity.length = replacement.length;
-                        item.profanities.forEach(p => {
-                            if (p.index > start) {
-                                p.index += replacement.length - wordLength;
-                            }
-                        });
-                    } else {
-                        item.profanities = item.profanities.filter(p => p !== profanity);
+                    const profanity = item.profanities.find(p => p.index == index && p.word == word);
+                    if (profanity) {
+                        if (replacement !== 'bleep') {
+                            profanity.word = replacement;
+                            profanity.length = replacement.length;
+                            // Update indices of subsequent profanities
+                            item.profanities.forEach(p => {
+                                if (p.index > start) {
+                                    p.index += replacement.length - wordLength;
+                                }
+                            });
+                        } else {
+                            // Remove the profanity if it's censored
+                            item.profanities = item.profanities.filter(p => p !== profanity);
+                        }
                     }
+
+                    item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                    state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+
+                    updateRow(blockNumber);
+                    generateSeverityChart();
+                    
+                    showToast('Replacement applied', 'success', 2000);
                 }
-
-                item.severity = determineSeverity(item.profanities, getCombinedWordList());
-                state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
-
-                updateRow(blockNumber);
-                generateSeverityChart();
             } catch (error) {
                 console.error('Error in applyReplacement:', error);
-                alert('Failed to apply replacement. Please try again.');
+                showToast('Failed to apply replacement', 'error');
             }
         }
 
@@ -567,7 +836,7 @@
 
                 const oldValue = item.modifiedText;
                 item.profanities.forEach(p => {
-                    const regex = new RegExp(`\\b${p.word}\\b`, 'gi');
+                    const regex = new RegExp(`\\b${escapeRegExp(p.word)}\\b`, 'gi');
                     item.modifiedText = item.modifiedText.replace(regex, 'bleep');
                 });
 
@@ -577,18 +846,25 @@
                 state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
                 updateRow(blockNumber);
                 generateSeverityChart();
+                
+                showToast('Block censored', 'success', 2000);
             } catch (error) {
                 console.error('Error in applyQuickReplacement:', error);
-                alert('Failed to censor block. Please try again.');
+                showToast('Failed to censor block', 'error');
             }
         }
 
         function autoReplaceAll() {
             try {
+                if (state.detectedProfanities.length === 0) {
+                    showToast('No profanities to replace', 'warning');
+                    return;
+                }
+                
                 state.detectedProfanities.forEach(item => {
                     const oldValue = item.modifiedText;
                     item.profanities.forEach(p => {
-                        const regex = new RegExp(`\\b${p.word}\\b`, 'gi');
+                        const regex = new RegExp(`\\b${escapeRegExp(p.word)}\\b`, 'gi');
                         item.modifiedText = item.modifiedText.replace(regex, 'bleep');
                     });
                     item.profanities = [];
@@ -597,16 +873,21 @@
                     updateRow(item.blockNumber);
                 });
                 generateSeverityChart();
+                
+                showToast('All profanities censored', 'success');
             } catch (error) {
                 console.error('Error in autoReplaceAll:', error);
-                alert('Failed to censor all profanities. Please try again.');
+                showToast('Failed to censor all profanities', 'error');
             }
         }
 
         function undoLastEdit() {
             try {
                 const lastEdit = state.editHistory.pop();
-                if (!lastEdit) return;
+                if (!lastEdit) {
+                    showToast('No edits to undo', 'warning');
+                    return;
+                }
 
                 const item = state.detectedProfanities.find(item => item.blockNumber == lastEdit.blockNumber);
                 if (item) {
@@ -615,10 +896,12 @@
                     item.severity = determineSeverity(item.profanities, getCombinedWordList());
                     updateRow(lastEdit.blockNumber);
                     generateSeverityChart();
+                    
+                    showToast('Edit undone', 'success', 2000);
                 }
             } catch (error) {
                 console.error('Error in undoLastEdit:', error);
-                alert('Failed to undo edit. Please try again.');
+                showToast('Failed to undo edit', 'error');
             }
         }
 
@@ -639,25 +922,11 @@
         }
 
         // ========== Utility Functions ==========
-        function validateFileInput() {
-            if (!elements.fileInput.files.length) {
-                alert('Please select an SRT file first');
-                return false;
-            }
-
-            const combinedWords = getCombinedWordList();
-            if (combinedWords.length === 0) {
-                alert('No profanity words to detect. Please add some words to the list.');
-                return false;
-            }
-
-            return true;
-        }
-
         function readFile(file) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
                 reader.readAsText(file);
             });
         }
@@ -676,17 +945,24 @@
         }
 
         function downloadCleanedFile() {
-            state.modifiedContent = generateCleanedSRT();
-            const blob = new Blob([state.modifiedContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            try {
+                state.modifiedContent = generateCleanedSRT();
+                const blob = new Blob([state.modifiedContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
 
-            a.href = url;
-            a.download = `censored_${elements.fileInput.files[0].name}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+                a.href = url;
+                a.download = `censored_${elements.fileInput.files[0].name}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('File downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                showToast('Failed to download file', 'error');
+            }
         }
 
         function skipLoadingGame() {
@@ -723,11 +999,19 @@
             elements.fileInput.addEventListener('change', updateFileName);
             elements.analyzeBtn.addEventListener('click', analyzeContent);
             elements.refreshBtn.addEventListener('click', loadProfanityList);
+            elements.toggleCustomBtn.addEventListener('click', () => {
+                elements.customContainer.classList.toggle('hidden');
+            });
             elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             elements.autoReplaceBtn.addEventListener('click', autoReplaceAll);
             elements.undoBtn.addEventListener('click', undoLastEdit);
             elements.skipGameBtn.addEventListener('click', skipLoadingGame);
             elements.resetBtn.addEventListener('click', () => {
+                if (state.detectedProfanities.length === 0) {
+                    showToast('No edits to reset', 'warning');
+                    return;
+                }
+                
                 state.detectedProfanities.forEach(item => {
                     item.modifiedText = item.text;
                     item.profanities = findProfanities(item.text, getCombinedWordList());
@@ -736,6 +1020,29 @@
                 state.editHistory = [];
                 generateSeverityChart();
                 showResults();
+                
+                showToast('All edits reset', 'success');
+            });
+
+            // Drag and drop support
+            elements.fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.add('border-blue-500', 'bg-blue-500/5');
+            });
+
+            elements.fileUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('border-blue-500', 'bg-blue-500/5');
+            });
+
+            elements.fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('border-blue-500', 'bg-blue-500/5');
+                
+                if (e.dataTransfer.files.length) {
+                    elements.fileInput.files = e.dataTransfer.files;
+                    updateFileName();
+                }
             });
 
             elements.resultsBody.addEventListener('change', (e) => {
