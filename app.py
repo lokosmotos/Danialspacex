@@ -252,7 +252,7 @@ def excel_to_srt(df):
         ])
     return "\n".join(srt_lines)
 
-ef srt_to_excel(content):
+def srt_to_excel(content):
     """
     Converts .srt subtitle text to a pandas DataFrame
     """
