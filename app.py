@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import zipfile
 from io import BytesIO
-from flask import Flask, render_template, request, redirect, send_file, jsonify
+from flask import Flask, render_template, request, redirect, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from opencc import OpenCC
 from langdetect import detect, LangDetectException
@@ -59,6 +59,101 @@ def bilingual_splitter():
     return render_template('split_bilingual.html')
 
 # ======================
+# PROFANITY CHECKER API ROUTES
+# ======================
+
+@app.route('/static/profanity_list.json')
+def serve_profanity_list():
+    """Serve the profanity list JSON file"""
+    try:
+        return send_from_directory('static', 'profanity_list.json')
+    except FileNotFoundError:
+        # Return a default list if file doesn't exist
+        default_list = {
+            "words": [
+                {"word": "hell", "severity": "low"},
+                {"word": "damn", "severity": "low"},
+                {"word": "bitch", "severity": "medium"},
+                {"word": "ass", "severity": "medium"},
+                {"word": "fuck", "severity": "high"},
+                {"word": "shit", "severity": "high"},
+                {"word": "crap", "severity": "low"},
+                {"word": "asshole", "severity": "medium"},
+                {"word": "bastard", "severity": "medium"},
+                {"word": "dick", "severity": "medium"},
+                {"word": "piss", "severity": "medium"},
+                {"word": "cunt", "severity": "high"},
+                {"word": "dickhead", "severity": "medium"}
+            ]
+        }
+        return jsonify(default_list)
+
+@app.route('/api/check-profanity', methods=['POST'])
+def api_check_profanity():
+    """API endpoint for profanity checking"""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    if not file or not allowed_file(file.filename, {'srt', 'txt'}):
+        return jsonify({'error': 'Invalid file type. Please upload SRT or TXT files.'}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+        results = analyze_profanity_content(content)
+        
+        return jsonify({
+            'success': True,
+            'filename': file.filename,
+            'results': results,
+            'total_profanities': len(results),
+            'severity_counts': count_severities(results)
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Profanity Check Error: {str(e)}")
+        return jsonify({'error': f'Processing failed: {str(e)}'}), 500
+
+@app.route('/api/generate-cleaned-srt', methods=['POST'])
+def generate_cleaned_srt():
+    """Generate cleaned SRT file with replacements"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        original_content = data.get('original_content', '')
+        replacements = data.get('replacements', {})
+        filename = data.get('filename', 'cleaned_subtitles.srt')
+        
+        if not original_content:
+            return jsonify({'error': 'No content provided'}), 400
+            
+        cleaned_content = apply_profanity_replacements(original_content, replacements)
+        
+        # Create temporary file for download
+        fd, temp_path = tempfile.mkstemp(suffix='.srt')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
+                tmp.write(cleaned_content)
+            
+            return send_file(
+                temp_path,
+                as_attachment=True,
+                download_name=f"cleaned_{secure_filename(filename)}",
+                mimetype='text/plain'
+            )
+        finally:
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+                
+    except Exception as e:
+        app.logger.error(f"Generate Cleaned SRT Error: {str(e)}")
+        return jsonify({'error': f'Failed to generate cleaned file: {str(e)}'}), 500
+
+# ======================
 # FILE PROCESSING ROUTES
 # ======================
 
@@ -82,36 +177,36 @@ def process_cc_removal():
 @app.route('/convert-excel-to-srt', methods=['POST'])
 def convert_excel_to_srt():
     if 'excelfile' not in request.files:
-        return redirect('/converter')
+        return jsonify({'error': 'No file uploaded'}), 400
     
     file = request.files['excelfile']
     if not file or not allowed_file(file.filename, {'xls', 'xlsx'}):
-        return redirect('/converter')
+        return jsonify({'error': 'Invalid file type. Please upload Excel files (.xls, .xlsx)'}), 400
 
     try:
         df = pd.read_excel(file)
         srt_content = excel_to_srt(df)
-        return send_srt_as_download(srt_content, "converted.srt")
+        return send_srt_as_download(srt_content, f"converted_{secure_filename(file.filename.replace('.xlsx', '').replace('.xls', ''))}.srt")
     except Exception as e:
         app.logger.error(f"Excel to SRT Error: {str(e)}")
-        return redirect('/converter')
+        return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
 
 @app.route('/convert-srt-to-excel', methods=['POST'])
 def convert_srt_to_excel():
     if 'srtfile' not in request.files:
-        return redirect('/converter')
+        return jsonify({'error': 'No file uploaded'}), 400
     
     file = request.files['srtfile']
     if not file or not allowed_file(file.filename, {'srt'}):
-        return redirect('/converter')
+        return jsonify({'error': 'Invalid file type. Please upload SRT files'}), 400
 
     try:
         content = file.read().decode('utf-8')
         df = srt_to_excel(content)
-        return send_excel_as_download(df, "converted.xlsx")
+        return send_excel_as_download(df, f"converted_{secure_filename(file.filename.replace('.srt', ''))}.xlsx")
     except Exception as e:
         app.logger.error(f"SRT to Excel Error: {str(e)}")
-        return redirect('/converter')
+        return jsonify({'error': f'Conversion failed: {str(e)}'}), 500
 
 # ======================
 # CHINESE CONVERSION
@@ -163,11 +258,12 @@ def upload_chinese_srt():
         return redirect('/chinese-converter')
 
 # ======================
-# PROFANITY CHECKER
+# PROFANITY CHECKER (Legacy - for template rendering)
 # ======================
 
 @app.route('/check-profanity', methods=['POST'])
 def check_profanity_route():
+    """Legacy route for template-based profanity checker"""
     if 'file' not in request.files:
         return redirect('/profanity-checker')
     
@@ -210,7 +306,7 @@ def send_srt_as_download(content, filename):
             pass
 
 def send_excel_as_download(df, filename):
-    output = io.BytesIO()
+    output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Subtitles')
     output.seek(0)
@@ -253,10 +349,7 @@ def excel_to_srt(df):
     return "\n".join(srt_lines)
 
 def srt_to_excel(content):
-    """
-    Converts .srt subtitle text to a pandas DataFrame
-    """
-    # Normalize line endings
+    """Converts .srt subtitle text to a pandas DataFrame"""
     content = content.replace('\r\n', '\n').strip()
     blocks = re.split(r'\n\s*\n', content)
     data = []
@@ -264,10 +357,6 @@ def srt_to_excel(content):
     for block in blocks:
         lines = block.strip().split('\n')
         if len(lines) >= 3:
-            # Expecting structure like:
-            # 1
-            # 00:00:01,000 --> 00:00:04,000
-            # Hello world
             time_line = lines[1]
             if '-->' not in time_line:
                 continue
@@ -279,8 +368,7 @@ def srt_to_excel(content):
                 'Subtitle Text': text
             })
     
-    df = pd.DataFrame(data)
-    return df
+    return pd.DataFrame(data)
 
 def detect_chinese_variant(text):
     simplified = "爱边陈当发干国红黄鸡开来马内齐时体为习"
@@ -305,22 +393,135 @@ def highlight_differences(orig, conv):
     return ''.join(result)
 
 def check_profanity(content):
+    """Legacy profanity checker for template rendering"""
     try:
         with open('static/profanity_list.json', 'r', encoding='utf-8') as f:
-            profanity_list = json.load(f)
+            profanity_data = json.load(f)
+            profanity_list = profanity_data.get('words', [word['word'] for word in profanity_data] if isinstance(profanity_data, list) else [])
     except:
         profanity_list = ["bad", "word"]  # Fallback list
     
     profanities = []
     for line_num, line in enumerate(content.splitlines(), 1):
         for word in profanity_list:
-            if re.search(r'\b' + re.escape(word) + r'\b', line, re.IGNORECASE):
+            word_text = word if isinstance(word, str) else word.get('word', '')
+            if word_text and re.search(r'\b' + re.escape(word_text) + r'\b', line, re.IGNORECASE):
                 profanities.append({
                     'line_number': line_num,
                     'line_text': line,
-                    'profanity': word
+                    'profanity': word_text
                 })
     return profanities
+
+def analyze_profanity_content(content):
+    """Enhanced profanity analysis for API"""
+    try:
+        with open('static/profanity_list.json', 'r', encoding='utf-8') as f:
+            profanity_data = json.load(f)
+            # Handle both array and object formats
+            if isinstance(profanity_data, list):
+                profanity_words = [{'word': item['word'], 'severity': item.get('severity', 'high')} for item in profanity_data if 'word' in item]
+            else:
+                profanity_words = profanity_data.get('words', [])
+    except Exception as e:
+        app.logger.error(f"Error loading profanity list: {str(e)}")
+        # Fallback list
+        profanity_words = [
+            {"word": "hell", "severity": "low"},
+            {"word": "damn", "severity": "low"},
+            {"word": "bitch", "severity": "medium"},
+            {"word": "ass", "severity": "medium"},
+            {"word": "fuck", "severity": "high"},
+            {"word": "shit", "severity": "high"}
+        ]
+    
+    blocks = parse_srt_blocks(content)
+    results = []
+    
+    for block in blocks:
+        profanities_in_block = []
+        
+        for profanity in profanity_words:
+            word = profanity['word']
+            severity = profanity.get('severity', 'high')
+            regex = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+            
+            for match in regex.finditer(block['text']):
+                profanities_in_block.append({
+                    'word': match.group(),
+                    'index': match.start(),
+                    'length': len(match.group()),
+                    'severity': severity,
+                    'id': f"{block['number']}-{match.start()}-{word}"
+                })
+        
+        if profanities_in_block:
+            # Determine overall block severity
+            severities = [p['severity'] for p in profanities_in_block]
+            block_severity = 'high' if 'high' in severities else 'medium' if 'medium' in severities else 'low'
+            
+            results.append({
+                'block_number': block['number'],
+                'timecodes': block['timecodes'],
+                'text': block['text'],
+                'profanities': profanities_in_block,
+                'severity': block_severity
+            })
+    
+    return results
+
+def parse_srt_blocks(content):
+    """Parse SRT content into blocks"""
+    blocks = []
+    content = content.replace('\r\n', '\n').strip()
+    block_texts = content.split('\n\n')
+    
+    for block_text in block_texts:
+        lines = [line.strip() for line in block_text.split('\n') if line.strip()]
+        if len(lines) < 3:
+            continue
+            
+        try:
+            number = int(lines[0])
+            timecodes = lines[1]
+            text = '\n'.join(lines[2:])
+            
+            blocks.append({
+                'number': number,
+                'timecodes': timecodes,
+                'text': text
+            })
+        except (ValueError, IndexError):
+            continue
+    
+    return blocks
+
+def count_severities(results):
+    """Count profanities by severity"""
+    counts = {'high': 0, 'medium': 0, 'low': 0}
+    for result in results:
+        for profanity in result['profanities']:
+            counts[profanity['severity']] += 1
+    return counts
+
+def apply_profanity_replacements(content, replacements):
+    """Apply profanity replacements to content"""
+    blocks = parse_srt_blocks(content)
+    
+    for block in blocks:
+        block_number = block['number']
+        if str(block_number) in replacements:
+            block_text = block['text']
+            # Apply replacements (this would need to be more sophisticated)
+            for find_word, replace_word in replacements[str(block_number)].items():
+                block_text = re.sub(r'\b' + re.escape(find_word) + r'\b', replace_word, block_text, flags=re.IGNORECASE)
+            
+            # Update the content
+            old_block = f"{block_number}\n{block['timecodes']}\n{block['text']}"
+            new_block = f"{block_number}\n{block['timecodes']}\n{block_text}"
+            content = content.replace(old_block, new_block)
+    
+    return content
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
