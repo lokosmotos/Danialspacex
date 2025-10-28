@@ -232,7 +232,7 @@
     <div class="converter-grid">
       <div class="converter-card">
         <h2><i class="fas fa-file-excel"></i> Excel to SRT</h2>
-        <form id="excelToSrtForm" action="/convert-excel-to-srt" method="post" enctype="multipart/form-data">
+        <form id="excelToSrtForm">
           <div class="file-upload">
             <input type="file" name="excelfile" id="excelfile" accept=".xlsx,.xls" required>
             <label for="excelfile" class="file-upload-label">
@@ -250,7 +250,7 @@
 
       <div class="converter-card">
         <h2><i class="fas fa-file-alt"></i> SRT to Excel</h2>
-        <form id="srtToExcelForm" action="/convert-srt-to-excel" method="post" enctype="multipart/form-data">
+        <form id="srtToExcelForm">
           <div class="file-upload">
             <input type="file" name="srtfile" id="srtfile" accept=".srt" required>
             <label for="srtfile" class="file-upload-label">
@@ -298,32 +298,137 @@
       document.getElementById('srtFileName').textContent = fileName;
     });
 
-    // Form submission handling
-    document.getElementById('excelToSrtForm').addEventListener('submit', function(e) {
-      const btn = document.getElementById('excelSubmitBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> Processing...';
-    });
-
-    document.getElementById('srtToExcelForm').addEventListener('submit', function(e) {
-      const btn = document.getElementById('srtSubmitBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<div class="spinner"></div> Processing...';
-    });
-
-    // Error handling (example - you would implement actual error detection)
-    function showError(formId, message) {
-      const statusEl = document.getElementById(formId === 'excelToSrtForm' ? 'excelStatus' : 'srtStatus');
-      statusEl.textContent = message;
-      statusEl.className = 'status-message error';
+    // Excel to SRT Form Submission
+    document.getElementById('excelToSrtForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
       
-      const btn = document.getElementById(formId === 'excelToSrtForm' ? 'excelSubmitBtn' : 'srtSubmitBtn');
-      btn.disabled = false;
-      btn.innerHTML = formId === 'excelToSrtForm' ? 'Convert & Download SRT' : 'Convert & Download Excel';
-    }
+      const btn = document.getElementById('excelSubmitBtn');
+      const statusEl = document.getElementById('excelStatus');
+      const formData = new FormData();
+      const fileInput = document.getElementById('excelfile');
+      
+      if (!fileInput.files[0]) {
+        statusEl.className = 'status-message error';
+        statusEl.textContent = 'Please select an Excel file first';
+        return;
+      }
+      
+      formData.append('excelfile', fileInput.files[0]);
+      
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Processing...';
+      statusEl.className = 'status-message';
+      statusEl.textContent = '';
+      
+      try {
+          const response = await fetch('/convert-excel-to-srt', {
+              method: 'POST',
+              body: formData
+          });
+          
+          if (response.ok) {
+              // Download the file
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              
+              // Get filename from Content-Disposition header or use default
+              const contentDisposition = response.headers.get('Content-Disposition');
+              let filename = 'converted.srt';
+              if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                if (filenameMatch) {
+                  filename = filenameMatch[1];
+                }
+              }
+              
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+              
+              statusEl.className = 'status-message success';
+              statusEl.textContent = 'Conversion successful! File downloaded.';
+          } else {
+              const error = await response.json();
+              throw new Error(error.error || 'Conversion failed');
+          }
+      } catch (error) {
+          statusEl.className = 'status-message error';
+          statusEl.textContent = error.message;
+      } finally {
+          btn.disabled = false;
+          btn.innerHTML = 'Convert & Download SRT';
+      }
+    });
 
-    // Example error simulation (remove in production)
-    // setTimeout(() => showError('excelToSrtForm', 'Error: Invalid Excel format detected'), 2000);
+    // SRT to Excel Form Submission
+    document.getElementById('srtToExcelForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const btn = document.getElementById('srtSubmitBtn');
+      const statusEl = document.getElementById('srtStatus');
+      const formData = new FormData();
+      const fileInput = document.getElementById('srtfile');
+      
+      if (!fileInput.files[0]) {
+        statusEl.className = 'status-message error';
+        statusEl.textContent = 'Please select an SRT file first';
+        return;
+      }
+      
+      formData.append('srtfile', fileInput.files[0]);
+      
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Processing...';
+      statusEl.className = 'status-message';
+      statusEl.textContent = '';
+      
+      try {
+          const response = await fetch('/convert-srt-to-excel', {
+              method: 'POST',
+              body: formData
+          });
+          
+          if (response.ok) {
+              // Download the file
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              
+              // Get filename from Content-Disposition header or use default
+              const contentDisposition = response.headers.get('Content-Disposition');
+              let filename = 'converted.xlsx';
+              if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+                if (filenameMatch) {
+                  filename = filenameMatch[1];
+                }
+              }
+              
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+              
+              statusEl.className = 'status-message success';
+              statusEl.textContent = 'Conversion successful! File downloaded.';
+          } else {
+              const error = await response.json();
+              throw new Error(error.error || 'Conversion failed');
+          }
+      } catch (error) {
+          statusEl.className = 'status-message error';
+          statusEl.textContent = error.message;
+      } finally {
+          btn.disabled = false;
+          btn.innerHTML = 'Convert & Download Excel';
+      }
+    });
   </script>
 </body>
 </html>
