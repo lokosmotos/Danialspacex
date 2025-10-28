@@ -210,16 +210,16 @@ def send_srt_as_download(content, filename):
             pass
 
 def send_excel_as_download(df, filename):
-    fd, path = tempfile.mkstemp(suffix='.xlsx')
-    try:
-        with pd.ExcelWriter(path, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
-        return send_file(path, as_attachment=True, download_name=filename)
-    finally:
-        try:
-            os.unlink(path)
-        except:
-            pass
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Subtitles')
+    output.seek(0)
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 def remove_cc(content):
     blocks = content.strip().split('\n\n')
@@ -252,20 +252,35 @@ def excel_to_srt(df):
         ])
     return "\n".join(srt_lines)
 
-def srt_to_excel(content):
-    pattern = re.compile(r"(\d+)\n(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\n\d|\Z)")
-    matches = pattern.findall(content)
-    
+ef srt_to_excel(content):
+    """
+    Converts .srt subtitle text to a pandas DataFrame
+    """
+    # Normalize line endings
+    content = content.replace('\r\n', '\n').strip()
+    blocks = re.split(r'\n\s*\n', content)
     data = []
-    for match in matches:
-        _, start, end, text = match
-        data.append({
-            'Start Time': start,
-            'End Time': end,
-            'Subtitle Text': text.strip()
-        })
+
+    for block in blocks:
+        lines = block.strip().split('\n')
+        if len(lines) >= 3:
+            # Expecting structure like:
+            # 1
+            # 00:00:01,000 --> 00:00:04,000
+            # Hello world
+            time_line = lines[1]
+            if '-->' not in time_line:
+                continue
+            start, end = [t.strip() for t in time_line.split('-->')]
+            text = " ".join(lines[2:])
+            data.append({
+                'Start Time': start,
+                'End Time': end,
+                'Subtitle Text': text
+            })
     
-    return pd.DataFrame(data)
+    df = pd.DataFrame(data)
+    return df
 
 def detect_chinese_variant(text):
     simplified = "爱边陈当发干国红黄鸡开来马内齐时体为习"
