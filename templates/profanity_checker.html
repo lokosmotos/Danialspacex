@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRT Profanity Checker | Advanced Editor</title>
+    <title>SRT Profanity Checker | Danial Space</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <style>
@@ -15,21 +15,100 @@
             border-color: #3b82f6;
             background-color: rgba(59, 130, 246, 0.05);
         }
+        .file-upload.dragover {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
         .profanity-highlight {
             background-color: rgba(239, 68, 68, 0.3);
             padding: 2px 4px;
             border-radius: 4px;
             margin: 0 2px;
             border: 1px solid #ef4444;
+            cursor: pointer;
+        }
+        .profanity-highlight:hover {
+            background-color: rgba(239, 68, 68, 0.5);
         }
         .profanity-highlight.replaced {
             background-color: rgba(34, 197, 94, 0.3);
             border-color: #10b981;
         }
+        #loadingGame {
+            transition: all 0.5s ease;
+        }
+        .game-tile {
+            width: 30px;
+            height: 30px;
+            background-color: #3b82f6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .game-tile:hover {
+            transform: scale(1.1);
+            background-color: #2563eb;
+        }
+        .game-tile.active {
+            background-color: #10b981;
+        }
+        .severity-high { background-color: rgba(239, 68, 68, 0.1); }
+        .severity-medium { background-color: rgba(234, 179, 8, 0.1); }
+        .severity-low { background-color: rgba(59, 130, 246, 0.1); }
+        .quick-replace-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        tr:hover .quick-replace-btn {
+            opacity: 1;
+        }
+        .success-check {
+            display: none;
+            color: #10b981;
+            font-size: 16px;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .success-check.block {
+            display: block;
+        }
+        tr.success .success-check {
+            display: block;
+        }
+        .validation-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.success {
+            background-color: #10b981;
+        }
+        .toast.error {
+            background-color: #ef4444;
+        }
+        .toast.warning {
+            background-color: #eab308;
+        }
         .editor-line {
             padding: 8px 12px;
             border-left: 3px solid transparent;
             transition: all 0.2s ease;
+            margin-bottom: 8px;
         }
         .editor-line.has-profanity {
             border-left-color: #ef4444;
@@ -43,191 +122,102 @@
             font-family: 'Courier New', monospace;
             line-height: 1.6;
         }
-        .tab-button {
-            padding: 8px 16px;
-            border: none;
-            background: #374151;
-            color: #9ca3af;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .tab-button.active {
-            background: #3b82f6;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .quick-action-btn {
-            padding: 4px 8px;
-            margin: 2px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            transition: all 0.2s ease;
-        }
-        .word-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin: 4px 0;
-            background: #374151;
-            border-radius: 6px;
-        }
-        .severity-badge {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .severity-high { background-color: #ef4444; color: white; }
-        .severity-medium { background-color: #eab308; color: black; }
-        .severity-low { background-color: #3b82f6; color: white; }
-        .search-box {
-            position: relative;
-        }
-        .search-box input {
-            padding-right: 2.5rem;
-        }
-        .search-icon {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6b7280;
-        }
-        .bulk-edit-textarea {
-            font-family: 'Courier New', monospace;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .stats-card {
-            background: #1f2937;
-            padding: 16px;
-            border-radius: 8px;
-            margin: 8px 0;
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
-    <div class="max-w-7xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <!-- Toast Notifications -->
         <div id="toastContainer"></div>
         
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker & Editor</h1>
-            <p class="text-gray-400">Advanced profanity detection with direct SRT editing capabilities</p>
+            <h1 class="text-3xl font-bold text-blue-400 mb-2">🔍 SRT Profanity Checker</h1>
+            <p class="text-gray-400">Upload your SRT file to detect and replace inappropriate language</p>
         </div>
 
-        <!-- Main Tabs -->
+        <!-- Upload Section -->
         <div class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
-            <div class="flex border-b border-gray-700 mb-6">
-                <button class="tab-button active" data-tab="upload">📁 Upload SRT</button>
-                <button class="tab-button" data-tab="editor">✏️ Direct Editor</button>
-                <button class="tab-button" data-tab="wordlist">📝 Word List</button>
-                <button class="tab-button" data-tab="bulk">🔄 Bulk Edit</button>
-            </div>
-
-            <!-- Upload Tab -->
-            <div id="uploadTab" class="tab-content active">
-                <form id="uploadForm" class="space-y-4">
-                    <div class="file-upload rounded-lg p-8 text-center cursor-pointer" id="fileUploadArea">
-                        <input type="file" name="file" id="fileInput" accept=".srt" class="hidden">
-                        <label for="fileInput" class="cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <h3 class="text-lg font-medium">Upload SRT File</h3>
-                            <p class="text-sm text-gray-400 mt-1">Or use direct editor below</p>
-                            <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm"></p>
-                        </label>
-                    </div>
-
-                    <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
-                        🔍 Analyze for Profanity
-                    </button>
-                </form>
-            </div>
-
-            <!-- Direct Editor Tab -->
-            <div id="editorTab" class="tab-content">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Paste your SRT content directly:</label>
-                    <textarea id="directEditor" class="w-full h-64 bg-gray-700 border border-gray-600 rounded-lg p-4 text-sm font-mono focus:border-blue-500 focus:outline-none" placeholder="Paste your SRT content here...&#10;1&#10;00:00:01,000 --> 00:00:04,000&#10;Your subtitle text here"></textarea>
+            <form id="uploadForm" class="space-y-4">
+                <div class="file-upload rounded-lg p-8 text-center cursor-pointer" id="fileUploadArea">
+                    <input type="file" name="file" id="fileInput" accept=".srt" class="hidden">
+                    <label for="fileInput" class="cursor-pointer block">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-blue-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h3 class="text-lg font-medium">Click to upload SRT file</h3>
+                        <p class="text-sm text-gray-400 mt-1">Only .srt files supported</p>
+                        <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm">No file selected</p>
+                        <p id="fileInfo" class="text-xs text-gray-500 mt-1"></p>
+                    </label>
                 </div>
-                <button type="button" id="analyzeDirectBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium">
-                    🔍 Analyze Pasted Content
-                </button>
-            </div>
 
-            <!-- Word List Tab -->
-            <div id="wordlistTab" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <h3 class="font-semibold text-red-400 mb-3">Current Profanity List</h3>
-                        <div class="search-box mb-3">
-                            <input type="text" id="wordSearch" placeholder="Search words..." class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
-                            <div class="search-icon">🔍</div>
-                        </div>
-                        <div id="wordListContainer" class="max-h-64 overflow-y-auto">
-                            <!-- Word list will be populated here -->
+                <!-- Profanity Word List -->
+                <div class="bg-gray-700/30 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-red-400">Profanity Words to Detect</h3>
+                        <div class="flex gap-2">
+                            <button type="button" id="refreshListBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                ↻ Refresh List
+                            </button>
+                            <button type="button" id="toggleCustomBtn" class="text-xs bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded">
+                                + Custom Words
+                            </button>
                         </div>
                     </div>
-                    <div>
-                        <h3 class="font-semibold text-green-400 mb-3">Add Custom Words</h3>
-                        <textarea id="customWordsInput" class="w-full h-32 bg-gray-700 border border-gray-600 rounded p-3 text-sm focus:border-blue-500 focus:outline-none" placeholder="Add words (one per line or comma separated)&#10;Optionally add severity: word:severity&#10;Example:&#10;damn:low&#10;asshole:medium&#10;fuck:high"></textarea>
-                        <div class="flex gap-2 mt-3">
-                            <button type="button" id="addWordsBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
+                    <div id="profanityListStatus" class="text-sm mb-2">
+                        Loading profanity list...
+                    </div>
+                    <div id="customProfanityContainer" class="hidden">
+                        <textarea id="customProfanityList" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 h-24 focus:border-blue-500 focus:outline-none text-sm" placeholder="Add additional words (one per line or comma separated)&#10;Format: word:severity (e.g., damn:medium)&#10;Default severity is high."></textarea>
+                        <div class="flex gap-2 mt-2">
+                            <button type="button" id="addCustomWordsBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm">
                                 Add Words
                             </button>
-                            <button type="button" id="clearWordsBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded">
-                                Clear All
+                            <button type="button" id="clearCustomWordsBtn" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 px-3 rounded text-sm">
+                                Clear
                             </button>
                         </div>
                     </div>
                 </div>
+
+                <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    Analyze SRT Content
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading Game -->
+        <div id="loadingGame" class="bg-gray-800 rounded-xl p-6 shadow-lg mb-8 hidden opacity-0 transition-opacity duration-300">
+            <div class="text-center mb-4">
+                <h3 class="text-xl font-medium text-blue-400 mb-1">⏳ Processing Your SRT File</h3>
+                <p class="text-gray-400">Analyzing subtitles for profanity...</p>
+                <div class="mt-3 h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+                    <div id="progressBar" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-400 mt-1">0% analyzed</p>
             </div>
 
-            <!-- Bulk Edit Tab -->
-            <div id="bulkTab" class="tab-content">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Quick Replace All Instances:</label>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <input type="text" id="bulkFind" placeholder="Find word..." class="bg-gray-700 border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
-                        <input type="text" id="bulkReplace" placeholder="Replace with..." class="bg-gray-700 border border-gray-600 rounded px-3 py-2 focus:border-blue-500 focus:outline-none">
-                        <button type="button" id="bulkReplaceBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
-                            Replace All
-                        </button>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Edit Full SRT Content:</label>
-                    <textarea id="bulkEditor" class="w-full h-64 bg-gray-700 border border-gray-600 rounded-lg p-4 text-sm font-mono focus:border-blue-500 focus:outline-none bulk-edit-textarea" placeholder="Edit your complete SRT content here..."></textarea>
-                    <div class="flex gap-2 mt-3">
-                        <button type="button" id="applyBulkEdit" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded">
-                            Apply Changes
-                        </button>
-                        <button type="button" id="reanalyzeBulk" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
-                            Re-analyze
-                        </button>
-                    </div>
-                </div>
+            <div class="text-center mb-4">
+                <h4 class="font-medium mb-2">🎯 Click the Blue Tiles</h4>
+                <p id="gameScore" class="text-2xl font-bold text-green-400">Score: 0</p>
+            </div>
+
+            <div id="gameBoard" class="grid grid-cols-5 gap-2 mb-4 max-w-xs mx-auto"></div>
+
+            <div class="text-center">
+                <button id="skipGameBtn" class="text-sm text-gray-400 hover:text-white bg-transparent border-none">
+                    Skip game and wait normally
+                </button>
             </div>
         </div>
 
         <!-- Results Section -->
         <div id="resultsSection" class="bg-gray-800 rounded-xl p-6 shadow-lg hidden">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-red-400">🚨 Profanity Analysis Results</h2>
+                <h2 class="text-2xl font-bold text-red-400">🚨 Detected Profanities</h2>
                 <div class="flex items-center gap-4">
                     <span id="profanityCount" class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">
                         0 found
@@ -243,24 +233,29 @@
                 <!-- Stats will be populated here -->
             </div>
 
+            <!-- Analytics Chart -->
+            <div class="mb-6">
+                <canvas id="severityChart" class="max-h-64"></canvas>
+            </div>
+
             <!-- Editor View -->
             <div id="editorView">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-semibold">SRT Content Editor</h3>
-                    <div class="action-buttons">
+                    <h3 class="font-semibold text-lg">SRT Content Editor</h3>
+                    <div class="flex gap-2">
                         <button id="replaceAllBtn" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded text-sm">
-                            Censor All
+                            🚫 Censor All Profanities
                         </button>
                         <button id="undoBtn" class="bg-gray-600 hover:bg-gray-500 text-white py-2 px-4 rounded text-sm">
-                            Undo
+                            ↩️ Undo Last Edit
                         </button>
                         <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded text-sm">
-                            Download Cleaned SRT
+                            💾 Download Cleaned SRT
                         </button>
                     </div>
                 </div>
                 
-                <div class="srt-editor bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <div class="srt-editor bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto border border-gray-700">
                     <div id="srtEditorContent">
                         <!-- SRT content with profanity highlights will be here -->
                     </div>
@@ -275,12 +270,12 @@
                             <tr class="border-b border-gray-700 text-left">
                                 <th class="py-3 px-2 font-medium">Line</th>
                                 <th class="py-3 px-2 font-medium">Timecode</th>
-                                <th class="py-3 px-2 font-medium">Original Text</th>
+                                <th class="py-3 px-2 font-medium">Text</th>
+                                <th class="py-3 px-2 font-medium">Severity</th>
                                 <th class="py-3 px-2 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="resultsBody" class="divide-y divide-gray-700">
-                        </tbody>
+                        <tbody id="resultsBody" class="divide-y divide-gray-700"></tbody>
                     </table>
                 </div>
             </div>
@@ -289,6 +284,22 @@
 
     <script>
         // ========== Configuration ==========
+        const DEFAULT_WORDS = [
+            { word: 'hell', severity: 'low' },
+            { word: 'damn', severity: 'low' },
+            { word: 'bitch', severity: 'medium' },
+            { word: 'ass', severity: 'medium' },
+            { word: 'fuck', severity: 'high' },
+            { word: 'shit', severity: 'high' },
+            { word: 'crap', severity: 'low' },
+            { word: 'asshole', severity: 'medium' },
+            { word: 'bastard', severity: 'medium' },
+            { word: 'dick', severity: 'medium' },
+            { word: 'piss', severity: 'medium' },
+            { word: 'cunt', severity: 'high' },
+            { word: 'dickhead', severity: 'medium' }
+        ];
+
         const SUGGESTED_REPLACEMENTS = {
             'hell': ['heck', 'hades', 'bleep'],
             'damn': ['darn', 'shoot', 'bleep'],
@@ -305,6 +316,12 @@
             'dickhead': ['jerk', 'fool', 'bleep']
         };
 
+        const SEVERITY_LEVELS = {
+            high: { class: 'severity-high', default: true },
+            medium: { class: 'severity-medium' },
+            low: { class: 'severity-low' }
+        };
+
         // ========== State Management ==========
         let state = {
             profanityWords: [],
@@ -313,163 +330,230 @@
             originalContent: '',
             modifiedContent: '',
             editHistory: [],
+            game: {
+                score: 0,
+                progress: 0,
+                interval: null
+            },
             currentView: 'editor' // 'editor' or 'list'
         };
 
         // ========== DOM Elements ==========
         const elements = {
-            // Tabs
-            tabButtons: document.querySelectorAll('.tab-button'),
-            tabContents: document.querySelectorAll('.tab-content'),
-            
-            // Upload
             fileInput: document.getElementById('fileInput'),
             fileName: document.getElementById('fileName'),
+            fileInfo: document.getElementById('fileInfo'),
             analyzeBtn: document.getElementById('analyzeBtn'),
-            
-            // Direct Editor
-            directEditor: document.getElementById('directEditor'),
-            analyzeDirectBtn: document.getElementById('analyzeDirectBtn'),
-            
-            // Word List
-            wordSearch: document.getElementById('wordSearch'),
-            wordListContainer: document.getElementById('wordListContainer'),
-            customWordsInput: document.getElementById('customWordsInput'),
-            addWordsBtn: document.getElementById('addWordsBtn'),
-            clearWordsBtn: document.getElementById('clearWordsBtn'),
-            
-            // Bulk Edit
-            bulkFind: document.getElementById('bulkFind'),
-            bulkReplace: document.getElementById('bulkReplace'),
-            bulkReplaceBtn: document.getElementById('bulkReplaceBtn'),
-            bulkEditor: document.getElementById('bulkEditor'),
-            applyBulkEdit: document.getElementById('applyBulkEdit'),
-            reanalyzeBulk: document.getElementById('reanalyzeBulk'),
-            
-            // Results
+            refreshBtn: document.getElementById('refreshListBtn'),
+            toggleCustomBtn: document.getElementById('toggleCustomBtn'),
+            customContainer: document.getElementById('customProfanityContainer'),
+            customWordsInput: document.getElementById('customProfanityList'),
+            addCustomWordsBtn: document.getElementById('addCustomWordsBtn'),
+            clearCustomWordsBtn: document.getElementById('clearCustomWordsBtn'),
+            loadingGame: document.getElementById('loadingGame'),
+            gameBoard: document.getElementById('gameBoard'),
+            progressBar: document.getElementById('progressBar'),
+            progressText: document.getElementById('progressText'),
+            gameScore: document.getElementById('gameScore'),
             resultsSection: document.getElementById('resultsSection'),
-            profanityCount: document.getElementById('profanityCount'),
-            statsContainer: document.getElementById('statsContainer'),
-            srtEditorContent: document.getElementById('srtEditorContent'),
             resultsBody: document.getElementById('resultsBody'),
-            toggleViewBtn: document.getElementById('toggleViewBtn'),
-            editorView: document.getElementById('editorView'),
-            listView: document.getElementById('listView'),
-            
-            // Actions
+            profanityCount: document.getElementById('profanityCount'),
+            profanityStatus: document.getElementById('profanityListStatus'),
+            downloadBtn: document.getElementById('downloadBtn'),
             replaceAllBtn: document.getElementById('replaceAllBtn'),
             undoBtn: document.getElementById('undoBtn'),
-            downloadBtn: document.getElementById('downloadBtn'),
-            
-            // File Upload
+            skipGameBtn: document.getElementById('skipGameBtn'),
             fileUploadArea: document.getElementById('fileUploadArea'),
-            toastContainer: document.getElementById('toastContainer')
+            toastContainer: document.getElementById('toastContainer'),
+            statsContainer: document.getElementById('statsContainer'),
+            srtEditorContent: document.getElementById('srtEditorContent'),
+            toggleViewBtn: document.getElementById('toggleViewBtn'),
+            editorView: document.getElementById('editorView'),
+            listView: document.getElementById('listView')
         };
 
         // ========== Initialization ==========
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProfanityList();
             setupEventListeners();
-            renderWordList();
+            generateGameBoard();
         });
 
-        // ========== Tab Management ==========
-        function setupTabs() {
-            elements.tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const tabName = button.dataset.tab;
-                    
-                    // Update buttons
-                    elements.tabButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    
-                    // Update contents
-                    elements.tabContents.forEach(content => content.classList.remove('active'));
-                    document.getElementById(`${tabName}Tab`).classList.add('active');
-                    
-                    // Special handling for bulk editor
-                    if (tabName === 'bulk' && state.modifiedContent) {
-                        elements.bulkEditor.value = state.modifiedContent;
+        // ========== Toast Notification System ==========
+        function showToast(message, type = 'info', duration = 5000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            elements.toastContainer.appendChild(toast);
+            
+            // Show toast
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
                     }
-                });
+                }, 300);
+            }, duration);
+        }
+
+        // ========== File Upload Handling ==========
+        function setupFileUpload() {
+            // File input change
+            elements.fileInput.addEventListener('change', function(e) {
+                handleFileSelection(e.target.files[0]);
+            });
+
+            // Drag and drop
+            elements.fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.add('dragover');
+            });
+
+            elements.fileUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('dragover');
+            });
+
+            elements.fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('dragover');
+                
+                if (e.dataTransfer.files.length) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.name.toLowerCase().endsWith('.srt')) {
+                        elements.fileInput.files = e.dataTransfer.files;
+                        handleFileSelection(file);
+                    } else {
+                        showToast('Please drop an SRT file', 'error');
+                    }
+                }
+            });
+
+            // Click on upload area
+            elements.fileUploadArea.addEventListener('click', (e) => {
+                if (e.target === elements.fileUploadArea || e.target.tagName === 'LABEL') {
+                    elements.fileInput.click();
+                }
             });
         }
 
-        // ========== Word List Management ==========
-        function renderWordList() {
-            const searchTerm = elements.wordSearch.value.toLowerCase();
-            const allWords = [...state.profanityWords, ...state.customWords];
-            const filteredWords = allWords.filter(word => 
-                word.word.toLowerCase().includes(searchTerm)
-            );
+        function handleFileSelection(file) {
+            if (!file) return;
 
-            elements.wordListContainer.innerHTML = filteredWords.map(word => `
-                <div class="word-list-item">
-                    <div>
-                        <span class="font-mono">${word.word}</span>
-                        <span class="severity-badge severity-${word.severity} ml-2">
-                            ${word.severity}
-                        </span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="removeWord('${word.word}')" class="text-red-400 hover:text-red-300 text-sm">
-                            🗑️
-                        </button>
-                    </div>
-                </div>
-            `).join('') || '<div class="text-gray-500 text-center py-4">No words found</div>';
+            if (!file.name.toLowerCase().endsWith('.srt')) {
+                showToast('Please select an SRT file', 'error');
+                elements.fileUploadArea.classList.add('validation-error');
+                elements.analyzeBtn.disabled = true;
+                return;
+            }
+
+            elements.fileName.textContent = file.name;
+            elements.fileInfo.textContent = `Size: ${formatFileSize(file.size)}`;
+            elements.fileUploadArea.classList.remove('validation-error');
+            elements.analyzeBtn.disabled = false;
+
+            showToast('SRT file selected successfully', 'success');
         }
 
-        function removeWord(word) {
-            state.customWords = state.customWords.filter(w => w.word !== word);
-            renderWordList();
-            showToast('Word removed', 'success');
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        function addCustomWords() {
-            const text = elements.customWordsInput.value.trim();
-            if (!text) return;
+        // ========== Core Functions ==========
+        async function loadProfanityList() {
+            try {
+                elements.profanityStatus.textContent = 'Loading profanity list...';
+                
+                // Try to load from external file
+                const response = await fetch('/static/profanity_list.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (validateProfanityListData(data)) {
+                        state.profanityWords = Array.isArray(data) ? 
+                            data.map(word => ({ word, severity: 'high' })) : 
+                            data.words;
+                        showSuccessMessage(`Loaded ${state.profanityWords.length} words from profanity_list.json`);
+                        showToast('Profanity list loaded successfully', 'success');
+                        return;
+                    }
+                }
+                throw new Error('Failed to load external list');
+            } catch (error) {
+                console.error('Loading failed:', error);
+                state.profanityWords = DEFAULT_WORDS;
+                showErrorMessage(`Using default list (${DEFAULT_WORDS.length} words)`);
+                showToast('Using default profanity list', 'warning');
+            }
+        }
 
-            const newWords = text.split(/[\n,]+/).map(line => {
-                const [word, severity = 'high'] = line.trim().split(':');
-                return { word: word.trim(), severity: severity.trim().toLowerCase() };
-            }).filter(w => w.word);
+        function validateProfanityListData(data) {
+            if (Array.isArray(data)) {
+                return data.every(item => typeof item === 'string' || (item && typeof item.word === 'string'));
+            }
+            return data && data.words && Array.isArray(data.words);
+        }
 
-            state.customWords = [...state.customWords, ...newWords];
-            elements.customWordsInput.value = '';
-            renderWordList();
-            showToast(`Added ${newWords.length} words`, 'success');
+        function getCombinedWordList() {
+            return [...state.profanityWords, ...state.customWords];
         }
 
         // ========== SRT Processing ==========
-        async function analyzeContent(contentSource = 'file') {
-            let content = '';
-            
-            if (contentSource === 'file') {
-                if (!elements.fileInput.files[0]) {
-                    showToast('Please select an SRT file', 'error');
-                    return;
-                }
-                content = await readFile(elements.fileInput.files[0]);
-            } else if (contentSource === 'direct') {
-                content = elements.directEditor.value;
-                if (!content.trim()) {
-                    showToast('Please paste SRT content', 'error');
-                    return;
-                }
+        async function analyzeContent() {
+            if (!elements.fileInput.files[0]) {
+                showToast('Please select an SRT file first', 'error');
+                return;
             }
 
-            state.originalContent = content;
-            state.modifiedContent = content;
-            processSRTContent();
-            showResults();
-            showToast('Analysis complete', 'success');
+            try {
+                startLoadingAnimation();
+                const file = elements.fileInput.files[0];
+                state.originalContent = await readFile(file);
+                
+                if (!validateSRTContent(state.originalContent)) {
+                    showToast('Invalid SRT file format', 'error');
+                    skipLoadingGame();
+                    return;
+                }
+                
+                simulateProgress(() => {
+                    processSRTContent();
+                    showResults();
+                    generateSeverityChart();
+                    showToast('Analysis complete! Found ' + state.detectedProfanities.length + ' profanities', 'success');
+                });
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                showToast('Failed to analyze file: ' + error.message, 'error');
+                skipLoadingGame();
+            }
+        }
+
+        function validateSRTContent(content) {
+            if (!content || content.trim().length === 0) {
+                return false;
+            }
+            
+            // Basic SRT validation
+            const blocks = content.split(/\n\s*\n/).filter(block => block.trim());
+            if (blocks.length < 1) return false;
+            
+            return true;
         }
 
         function processSRTContent() {
             const combinedWords = getCombinedWordList();
-            const blocks = parseSRT(state.modifiedContent);
+            const blocks = parseSRT(state.originalContent);
             state.detectedProfanities = [];
+            state.modifiedContent = state.originalContent;
 
             blocks.forEach(block => {
                 const profanities = findProfanities(block.text, combinedWords);
@@ -486,7 +570,116 @@
             });
         }
 
-        // ========== Enhanced Editor View ==========
+        function parseSRT(content) {
+            const blocks = [];
+            const blockTexts = content.split(/\n\s*\n/).filter(block => block.trim());
+            
+            blockTexts.forEach(blockText => {
+                const lines = blockText.split('\n').filter(line => line.trim());
+                if (lines.length < 3) return;
+                
+                const number = parseInt(lines[0].trim());
+                if (isNaN(number)) return;
+                
+                let timecodes = '';
+                let textLines = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].includes('-->')) {
+                        timecodes = lines[i].trim();
+                        textLines = lines.slice(i + 1);
+                        break;
+                    }
+                }
+                
+                if (!timecodes) return;
+                
+                blocks.push({
+                    number: number,
+                    timecodes: timecodes,
+                    text: textLines.join('\n')
+                });
+            });
+            
+            return blocks;
+        }
+
+        function findProfanities(text, wordList) {
+            const found = [];
+            wordList.forEach(({ word, severity }) => {
+                const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'gi');
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    found.push({
+                        word: match[0],
+                        index: match.index,
+                        length: match[0].length,
+                        severity
+                    });
+                }
+            });
+            return found;
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function determineSeverity(profanities, wordList) {
+            if (profanities.length === 0) return 'low';
+            
+            const severities = profanities.map(p => {
+                const wordSeverity = wordList.find(w => 
+                    w.word.toLowerCase() === p.word.toLowerCase()
+                )?.severity || 'high';
+                return wordSeverity;
+            });
+            
+            if (severities.includes('high')) return 'high';
+            if (severities.includes('medium')) return 'medium';
+            return 'low';
+        }
+
+        // ========== Enhanced Results Display ==========
+        function showResults() {
+            elements.resultsSection.classList.remove('hidden');
+            elements.profanityCount.textContent = `${state.detectedProfanities.length} found`;
+
+            // Update stats
+            const severityCounts = { high: 0, medium: 0, low: 0 };
+            let replacedCount = 0;
+
+            state.detectedProfanities.forEach(item => {
+                severityCounts[item.severity]++;
+                if (item.modifiedText !== item.text) replacedCount++;
+            });
+
+            elements.statsContainer.innerHTML = `
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-red-400">${state.detectedProfanities.length}</div>
+                    <div class="text-sm text-gray-400">Total Profanities</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-yellow-400">${severityCounts.high}</div>
+                    <div class="text-sm text-gray-400">High Severity</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-400">${severityCounts.medium}</div>
+                    <div class="text-sm text-gray-400">Medium Severity</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400">${replacedCount}</div>
+                    <div class="text-sm text-gray-400">Replaced</div>
+                </div>
+            `;
+
+            if (state.currentView === 'editor') {
+                renderEditorView();
+            } else {
+                renderListView();
+            }
+        }
+
         function renderEditorView() {
             const blocks = parseSRT(state.modifiedContent);
             let editorHTML = '';
@@ -507,7 +700,7 @@
                         const highlightClass = isWordReplaced ? 'profanity-highlight replaced' : 'profanity-highlight';
                         
                         textDisplay = textDisplay.substring(0, p.index) +
-                            `<span class="${highlightClass}" data-word="${p.word}" data-index="${p.index}" data-block="${block.number}">${currentWord}</span>` +
+                            `<span class="${highlightClass}" onclick="replaceWord(${block.number}, ${p.index}, '${p.word}')" title="Click to replace '${p.word}'">${currentWord}</span>` +
                             textDisplay.substring(p.index + p.length);
                     });
                 }
@@ -518,11 +711,11 @@
                         <div class="text-gray-500 text-xs font-mono mb-1">${block.timecodes}</div>
                         <div class="text-gray-200">${textDisplay}</div>
                         ${hasProfanity ? `
-                            <div class="action-buttons mt-2">
-                                <button onclick="replaceBlockProfanities(${block.number}, 'bleep')" class="quick-action-btn bg-red-600 hover:bg-red-700 text-white">
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="replaceBlockProfanities(${block.number}, 'bleep')" class="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded text-xs">
                                     Censor All
                                 </button>
-                                <button onclick="showWordReplacements(${block.number})" class="quick-action-btn bg-blue-600 hover:bg-blue-700 text-white">
+                                <button onclick="showWordReplacements(${block.number})" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs">
                                     Replace Individually
                                 </button>
                             </div>
@@ -531,53 +724,60 @@
                 `;
             });
 
-            elements.srtEditorContent.innerHTML = editorHTML;
+            elements.srtEditorContent.innerHTML = editorHTML || '<div class="text-gray-500 text-center py-8">No content to display</div>';
         }
 
         function renderListView() {
             elements.resultsBody.innerHTML = state.detectedProfanities.map(item => `
-                <tr class="${item.severity === 'high' ? 'bg-red-900/20' : item.severity === 'medium' ? 'bg-yellow-900/20' : 'bg-blue-900/20'}">
-                    <td class="py-3 px-2 font-mono">${item.blockNumber}</td>
+                <tr class="${SEVERITY_LEVELS[item.severity].class}">
+                    <td class="py-3 px-2 font-mono relative">${item.blockNumber}<span class="success-check ${item.modifiedText !== item.text ? 'block' : ''}">✔</span></td>
                     <td class="py-3 px-2 font-mono text-sm">${item.timecodes}</td>
                     <td class="py-3 px-2">
-                        <div class="mb-2">${highlightProfanitiesInText(item.text, item.profanities)}</div>
-                        <div class="text-green-400 text-sm">${item.modifiedText !== item.text ? '✓ Edited: ' + item.modifiedText : ''}</div>
-                    </td>
-                    <td class="py-3 px-2">
-                        <div class="action-buttons">
-                            <button onclick="replaceBlockProfanities(${item.blockNumber}, 'bleep')" class="quick-action-btn bg-red-600 hover:bg-red-700 text-white">
-                                Censor
-                            </button>
-                            <button onclick="showWordReplacements(${item.blockNumber})" class="quick-action-btn bg-blue-600 hover:bg-blue-700 text-white">
-                                Replace
-                            </button>
-                            <button onclick="resetBlock(${item.blockNumber})" class="quick-action-btn bg-gray-600 hover:bg-gray-500 text-white">
-                                Reset
-                            </button>
+                        <div class="mb-2">${item.modifiedText !== item.text ? 
+                            `<span class="text-green-400">✓ Edited: ${item.modifiedText}</span><br><span class="text-gray-500 line-through">Original: ${item.text}</span>` : 
+                            item.text}
                         </div>
                     </td>
+                    <td class="py-3 px-2 text-center">
+                        <span class="severity-badge severity-${item.severity} px-2 py-1 rounded text-xs">
+                            ${item.severity}
+                        </span>
+                    </td>
+                    <td class="py-3 px-2 text-center">
+                        <button onclick="replaceBlockProfanities(${item.blockNumber}, 'bleep')" class="quick-replace-btn bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded text-xs">
+                            Censor
+                        </button>
+                    </td>
                 </tr>
-            `).join('');
+            `).join('') || '<tr><td colspan="5" class="py-8 text-center text-gray-500">No profanities found</td></tr>';
+        }
+
+        // ========== Editing Functions ==========
+        function replaceWord(blockNumber, index, word) {
+            const suggestions = (SUGGESTED_REPLACEMENTS[word.toLowerCase()] || ['bleep']);
+            const replacement = prompt(`Replace "${word}" with:`, suggestions[0]);
+            
+            if (replacement !== null && replacement.trim()) {
+                applyReplacement(blockNumber, word, index, replacement.trim());
+            }
         }
 
         function showWordReplacements(blockNumber) {
             const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
             if (!item) return;
 
-            let replacements = 'Replace words in this block:\n\n';
+            let message = 'Replace words in this block:\n\n';
             item.profanities.forEach(p => {
                 const suggestions = (SUGGESTED_REPLACEMENTS[p.word.toLowerCase()] || ['bleep']).join(', ');
-                replacements += `"${p.word}" → [${suggestions}] (or type custom replacement)\n`;
+                message += `"${p.word}" → [${suggestions}]\n`;
             });
 
-            const customReplace = prompt(replacements, item.profanities.map(p => p.word).join(', '));
-            if (customReplace !== null) {
-                const replacements = customReplace.split(',').map(r => r.trim());
-                replaceBlockWithCustom(blockNumber, replacements);
+            const replacement = prompt(message + '\nEnter replacement (or leave empty to censor):', 'bleep');
+            if (replacement !== null) {
+                replaceBlockProfanities(blockNumber, replacement || 'bleep');
             }
         }
 
-        // ========== Editing Functions ==========
         function replaceBlockProfanities(blockNumber, replacement = 'bleep') {
             const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
             if (!item) return;
@@ -597,63 +797,44 @@
             showToast('Block censored', 'success');
         }
 
-        function replaceBlockWithCustom(blockNumber, replacements) {
-            const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
-            if (!item) return;
+        function applyReplacement(blockNumber, word, index, replacement) {
+            try {
+                const item = state.detectedProfanities.find(item => item.blockNumber == blockNumber);
+                if (!item) throw new Error('Block not found');
 
-            const oldValue = item.modifiedText;
-            item.profanities.forEach((p, index) => {
-                const replacement = replacements[index] || 'bleep';
-                const regex = new RegExp(`\\b${escapeRegExp(p.word)}\\b`, 'gi');
-                item.modifiedText = item.modifiedText.replace(regex, replacement);
-            });
+                const start = parseInt(index);
+                const wordLength = word.length;
+                const oldValue = item.modifiedText;
 
-            item.profanities = findProfanities(item.modifiedText, getCombinedWordList());
-            item.severity = determineSeverity(item.profanities, getCombinedWordList());
-            state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
+                item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
 
-            updateSRTContent();
-            showResults();
-            showToast('Custom replacements applied', 'success');
-        }
+                const profanity = item.profanities.find(p => p.index == index && p.word == word);
+                if (profanity) {
+                    if (replacement !== 'bleep') {
+                        profanity.word = replacement;
+                        profanity.length = replacement.length;
+                        item.profanities.forEach(p => {
+                            if (p.index > start) {
+                                p.index += replacement.length - wordLength;
+                            }
+                        });
+                    } else {
+                        item.profanities = item.profanities.filter(p => p !== profanity);
+                    }
+                }
 
-        function resetBlock(blockNumber) {
-            const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
-            if (!item) return;
+                item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
 
-            item.modifiedText = item.text;
-            item.profanities = findProfanities(item.text, getCombinedWordList());
-            item.severity = determineSeverity(item.profanities, getCombinedWordList());
-
-            updateSRTContent();
-            showResults();
-            showToast('Block reset', 'success');
-        }
-
-        function bulkReplaceAll() {
-            const find = elements.bulkFind.value.trim();
-            const replace = elements.bulkReplace.value.trim();
-
-            if (!find) {
-                showToast('Please enter a word to find', 'error');
-                return;
+                updateSRTContent();
+                showResults();
+                showToast('Replacement applied', 'success');
+            } catch (error) {
+                console.error('Error in applyReplacement:', error);
+                showToast('Failed to apply replacement', 'error');
             }
-
-            state.modifiedContent = state.modifiedContent.replace(
-                new RegExp(`\\b${escapeRegExp(find)}\\b`, 'gi'),
-                replace
-            );
-
-            processSRTContent();
-            showResults();
-            showToast(`Replaced all instances of "${find}"`, 'success');
-            
-            // Clear inputs
-            elements.bulkFind.value = '';
-            elements.bulkReplace.value = '';
         }
 
-        // ========== Utility Functions ==========
         function updateSRTContent() {
             const blocks = parseSRT(state.originalContent);
             let newContent = '';
@@ -667,43 +848,105 @@
             state.modifiedContent = newContent.trim();
         }
 
-        function showResults() {
-            elements.resultsSection.classList.remove('hidden');
-            elements.profanityCount.textContent = `${state.detectedProfanities.length} profanities found`;
-
-            // Update stats
+        // ========== Chart Generation ==========
+        function generateSeverityChart() {
+            const ctx = document.getElementById('severityChart');
+            
+            if (ctx.chart) {
+                ctx.chart.destroy();
+            }
+            
             const severityCounts = { high: 0, medium: 0, low: 0 };
-            let replacedCount = 0;
-
             state.detectedProfanities.forEach(item => {
                 severityCounts[item.severity]++;
-                if (item.modifiedText !== item.text) replacedCount++;
             });
 
-            elements.statsContainer.innerHTML = `
-                <div class="stats-card">
-                    <div class="text-2xl font-bold text-red-400">${state.detectedProfanities.length}</div>
-                    <div class="text-sm text-gray-400">Total Profanities</div>
-                </div>
-                <div class="stats-card">
-                    <div class="text-2xl font-bold text-yellow-400">${severityCounts.high}</div>
-                    <div class="text-sm text-gray-400">High Severity</div>
-                </div>
-                <div class="stats-card">
-                    <div class="text-2xl font-bold text-blue-400">${severityCounts.medium}</div>
-                    <div class="text-sm text-gray-400">Medium Severity</div>
-                </div>
-                <div class="stats-card">
-                    <div class="text-2xl font-bold text-green-400">${replacedCount}</div>
-                    <div class="text-sm text-gray-400">Replaced</div>
-                </div>
-            `;
+            ctx.chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['High', 'Medium', 'Low'],
+                    datasets: [{
+                        label: 'Profanity Severity',
+                        data: [severityCounts.high, severityCounts.medium, severityCounts.low],
+                        backgroundColor: ['#ef4444', '#eab308', '#3b82f6'],
+                        borderColor: ['#b91c1c', '#b45309', '#1d4ed8'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Count' },
+                            ticks: { stepSize: 1 }
+                        },
+                        x: { title: { display: true, text: 'Severity' } }
+                    },
+                    plugins: { 
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
 
-            // Render appropriate view
-            if (state.currentView === 'editor') {
-                renderEditorView();
-            } else {
-                renderListView();
+        // ========== Utility Functions ==========
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        function generateCleanedSRT() {
+            return state.modifiedContent;
+        }
+
+        function downloadCleanedFile() {
+            try {
+                const content = generateCleanedSRT();
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+
+                const originalName = elements.fileInput.files[0]?.name || 'subtitles';
+                a.href = url;
+                a.download = `cleaned_${originalName}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('File downloaded successfully', 'success');
+            } catch (error) {
+                console.error('Error downloading file:', error);
+                showToast('Failed to download file', 'error');
+            }
+        }
+
+        function undoLastEdit() {
+            try {
+                const lastEdit = state.editHistory.pop();
+                if (!lastEdit) {
+                    showToast('No edits to undo', 'warning');
+                    return;
+                }
+
+                const item = state.detectedProfanities.find(item => item.blockNumber == lastEdit.blockNumber);
+                if (item) {
+                    item.modifiedText = lastEdit.oldValue;
+                    item.profanities = findProfanities(item.modifiedText, getCombinedWordList());
+                    item.severity = determineSeverity(item.profanities, getCombinedWordList());
+                    updateSRTContent();
+                    showResults();
+                    showToast('Edit undone', 'success');
+                }
+            } catch (error) {
+                console.error('Error in undoLastEdit:', error);
+                showToast('Failed to undo edit', 'error');
             }
         }
 
@@ -715,73 +958,96 @@
             showResults();
         }
 
+        // ========== Loading Game ==========
+        function generateGameBoard() {
+            elements.gameBoard.innerHTML = '';
+            for (let i = 0; i < 25; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'game-tile';
+                tile.addEventListener('click', () => {
+                    if (!tile.classList.contains('active')) {
+                        tile.classList.add('active');
+                        state.game.score++;
+                        elements.gameScore.textContent = `Score: ${state.game.score}`;
+                    }
+                });
+                elements.gameBoard.appendChild(tile);
+            }
+        }
+
+        function simulateProgress(onComplete) {
+            state.game.interval = setInterval(() => {
+                state.game.progress += Math.random() * 5;
+                if (state.game.progress > 100) {
+                    state.game.progress = 100;
+                    clearInterval(state.game.interval);
+                    onComplete();
+                }
+
+                elements.progressBar.style.width = `${state.game.progress}%`;
+                elements.progressText.textContent = `${Math.floor(state.game.progress)}% analyzed`;
+            }, 100);
+        }
+
+        function startLoadingAnimation() {
+            state.game.score = 0;
+            state.game.progress = 0;
+            elements.gameScore.textContent = `Score: ${state.game.score}`;
+
+            elements.loadingGame.classList.remove('hidden');
+            setTimeout(() => elements.loadingGame.classList.remove('opacity-0'), 10);
+        }
+
+        function skipLoadingGame() {
+            clearInterval(state.game.interval);
+            state.game.progress = 100;
+            elements.progressBar.style.width = '100%';
+            elements.progressText.textContent = '100% analyzed';
+        }
+
         // ========== Event Listeners ==========
         function setupEventListeners() {
-            // Tab management
-            setupTabs();
+            setupFileUpload();
+            
+            elements.analyzeBtn.addEventListener('click', analyzeContent);
+            elements.refreshBtn.addEventListener('click', loadProfanityList);
+            elements.toggleCustomBtn.addEventListener('click', () => {
+                elements.customContainer.classList.toggle('hidden');
+            });
+            elements.addCustomWordsBtn.addEventListener('click', () => {
+                const text = elements.customWordsInput.value.trim();
+                if (!text) return;
 
-            // File handling
-            elements.fileInput.addEventListener('change', updateFileName);
-            elements.analyzeBtn.addEventListener('click', () => analyzeContent('file'));
-            elements.analyzeDirectBtn.addEventListener('click', () => analyzeContent('direct'));
+                const newWords = text.split(/[\n,]+/).map(line => {
+                    const [word, severity = 'high'] = line.trim().split(':');
+                    return { word: word.trim(), severity: severity.trim().toLowerCase() };
+                }).filter(w => w.word);
 
-            // Word list management
-            elements.wordSearch.addEventListener('input', renderWordList);
-            elements.addWordsBtn.addEventListener('click', addCustomWords);
-            elements.clearWordsBtn.addEventListener('click', () => {
+                state.customWords = [...state.customWords, ...newWords];
+                elements.customWordsInput.value = '';
+                showToast(`Added ${newWords.length} words to custom list`, 'success');
+            });
+            elements.clearCustomWordsBtn.addEventListener('click', () => {
                 state.customWords = [];
-                renderWordList();
+                elements.customWordsInput.value = '';
                 showToast('Custom words cleared', 'success');
             });
-
-            // Bulk edit
-            elements.bulkReplaceBtn.addEventListener('click', bulkReplaceAll);
-            elements.applyBulkEdit.addEventListener('click', () => {
-                state.modifiedContent = elements.bulkEditor.value;
-                processSRTContent();
-                showResults();
-                showToast('Bulk edits applied', 'success');
-            });
-            elements.reanalyzeBulk.addEventListener('click', () => {
-                analyzeContent('direct');
-            });
-
-            // View toggling
-            elements.toggleViewBtn.addEventListener('click', toggleView);
-
-            // Actions
+            elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             elements.replaceAllBtn.addEventListener('click', () => {
                 state.detectedProfanities.forEach(item => replaceBlockProfanities(item.blockNumber));
             });
             elements.undoBtn.addEventListener('click', undoLastEdit);
-            elements.downloadBtn.addEventListener('click', downloadCleanedFile);
-
-            // Drag and drop
-            elements.fileUploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.add('border-blue-500', 'bg-blue-500/5');
-            });
-            elements.fileUploadArea.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.remove('border-blue-500', 'bg-blue-500/5');
-            });
-            elements.fileUploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.remove('border-blue-500', 'bg-blue-500/5');
-                if (e.dataTransfer.files.length) {
-                    elements.fileInput.files = e.dataTransfer.files;
-                    updateFileName();
-                }
-            });
+            elements.skipGameBtn.addEventListener('click', skipLoadingGame);
+            elements.toggleViewBtn.addEventListener('click', toggleView);
         }
 
-        // ========== Keep your existing utility functions ==========
-        // (readFile, parseSRT, findProfanities, escapeRegExp, determineSeverity, 
-        //  getCombinedWordList, loadProfanityList, showToast, downloadCleanedFile, 
-        //  undoLastEdit, updateFileName, etc.)
+        function showSuccessMessage(message) {
+            elements.profanityStatus.innerHTML = `<span class="text-green-400">✓ ${message}</span>`;
+        }
 
-        // ... include all your existing utility functions here ...
-
+        function showErrorMessage(message) {
+            elements.profanityStatus.innerHTML = `<span class="text-yellow-400">⚠ ${message}</span>`;
+        }
     </script>
 </body>
 </html>
