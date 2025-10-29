@@ -36,11 +36,6 @@
             background-color: rgba(34, 197, 94, 0.3);
             border-color: #10b981;
         }
-        .profanity-highlight.editing {
-            background-color: rgba(59, 130, 246, 0.3);
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-        }
         .editor-line {
             padding: 12px 16px;
             border-left: 4px solid transparent;
@@ -55,10 +50,6 @@
         .editor-line.replaced {
             border-left-color: #10b981;
             background: rgba(34, 197, 94, 0.05);
-        }
-        .editor-line.editing {
-            border-left-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.05);
         }
         .srt-editor {
             font-family: 'Courier New', monospace;
@@ -186,6 +177,13 @@
             margin: 12px 0;
             border-left: 3px solid #3b82f6;
         }
+        .file-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
@@ -211,6 +209,19 @@
                     <p class="text-sm text-gray-400 mt-1">Drag & drop or click to browse</p>
                     <p id="fileName" class="text-blue-300 mt-2 font-mono text-sm">No file selected</p>
                 </label>
+            </div>
+
+            <!-- File Info Display -->
+            <div id="fileInfo" class="file-info hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="font-semibold" id="infoFileName">file.srt</div>
+                        <div class="text-sm text-gray-400" id="infoFileSize">0 KB</div>
+                    </div>
+                    <button id="clearFileBtn" class="text-red-400 hover:text-red-300 bg-red-900/20 hover:bg-red-900/30 px-3 py-1 rounded text-sm">
+                        Remove
+                    </button>
+                </div>
             </div>
 
             <button type="button" id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
@@ -393,25 +404,26 @@
             originalContent: '',
             modifiedContent: '',
             editHistory: [],
-            currentEditing: null // { blockNumber, word, index, severity }
+            currentEditing: null
         };
 
         // ========== DOM Elements ==========
         const elements = {
-            // Upload
             fileInput: document.getElementById('fileInput'),
             fileName: document.getElementById('fileName'),
+            fileInfo: document.getElementById('fileInfo'),
+            infoFileName: document.getElementById('infoFileName'),
+            infoFileSize: document.getElementById('infoFileSize'),
+            clearFileBtn: document.getElementById('clearFileBtn'),
             analyzeBtn: document.getElementById('analyzeBtn'),
             fileUploadArea: document.getElementById('fileUploadArea'),
             
-            // Results
             resultsSection: document.getElementById('resultsSection'),
             profanityCount: document.getElementById('profanityCount'),
             statsContainer: document.getElementById('statsContainer'),
             srtEditorContent: document.getElementById('srtEditorContent'),
             downloadBtn: document.getElementById('downloadBtn'),
             
-            // Modal
             editModal: document.getElementById('editModal'),
             modalTitle: document.getElementById('modalTitle'),
             contextText: document.getElementById('contextText'),
@@ -423,7 +435,6 @@
             keepOriginal: document.getElementById('keepOriginal'),
             cancelEdit: document.getElementById('cancelEdit'),
             
-            // Toast
             toastContainer: document.getElementById('toastContainer')
         };
 
@@ -432,6 +443,81 @@
             await loadProfanityList();
             setupEventListeners();
         });
+
+        // ========== File Upload Handling ==========
+        function setupFileUpload() {
+            // File input change
+            elements.fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                handleFileSelection(file);
+            });
+
+            // Drag and drop
+            elements.fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.add('dragover');
+            });
+
+            elements.fileUploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('dragover');
+            });
+
+            elements.fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                elements.fileUploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    const file = e.dataTransfer.files[0];
+                    elements.fileInput.files = e.dataTransfer.files;
+                    handleFileSelection(file);
+                }
+            });
+
+            // Click on upload area
+            elements.fileUploadArea.addEventListener('click', () => {
+                elements.fileInput.click();
+            });
+
+            // Clear file button
+            elements.clearFileBtn.addEventListener('click', clearFileSelection);
+        }
+
+        function handleFileSelection(file) {
+            if (!file) return;
+
+            console.log('File selected:', file.name, file.type, file.size);
+
+            if (!file.name.toLowerCase().endsWith('.srt')) {
+                showToast('Please select an SRT file (.srt)', 'error');
+                return;
+            }
+
+            // Update UI
+            elements.fileName.textContent = file.name;
+            elements.infoFileName.textContent = file.name;
+            elements.infoFileSize.textContent = formatFileSize(file.size);
+            elements.fileInfo.classList.remove('hidden');
+            elements.analyzeBtn.disabled = false;
+
+            showToast(`"${file.name}" selected successfully`, 'success');
+        }
+
+        function clearFileSelection() {
+            elements.fileInput.value = '';
+            elements.fileName.textContent = 'No file selected';
+            elements.fileInfo.classList.add('hidden');
+            elements.analyzeBtn.disabled = true;
+            elements.resultsSection.classList.add('hidden');
+            showToast('File removed', 'info');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
 
         // ========== Core Functions ==========
         async function loadProfanityList() {
@@ -456,54 +542,18 @@
             return [...state.profanityWords, ...state.customWords];
         }
 
-        // ========== File Handling ==========
-        function setupFileUpload() {
-            elements.fileInput.addEventListener('change', handleFileSelection);
-            
-            // Drag and drop
-            elements.fileUploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.add('dragover');
-            });
-
-            elements.fileUploadArea.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.remove('dragover');
-            });
-
-            elements.fileUploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                elements.fileUploadArea.classList.remove('dragover');
-                if (e.dataTransfer.files.length) {
-                    elements.fileInput.files = e.dataTransfer.files;
-                    handleFileSelection();
-                }
-            });
-        }
-
-        function handleFileSelection() {
-            const file = elements.fileInput.files[0];
-            if (!file) return;
-
-            if (!file.name.toLowerCase().endsWith('.srt')) {
-                showToast('Please select an SRT file', 'error');
-                return;
-            }
-
-            elements.fileName.textContent = file.name;
-            elements.analyzeBtn.disabled = false;
-            showToast('SRT file selected', 'success');
-        }
-
         async function analyzeContent() {
             if (!elements.fileInput.files[0]) {
-                showToast('Please select an SRT file', 'error');
+                showToast('Please select an SRT file first', 'error');
                 return;
             }
 
             try {
                 const file = elements.fileInput.files[0];
+                console.log('Reading file:', file.name);
+                
                 state.originalContent = await readFile(file);
+                console.log('File content length:', state.originalContent.length);
                 
                 if (!validateSRTContent(state.originalContent)) {
                     showToast('Invalid SRT file format', 'error');
@@ -514,7 +564,8 @@
                 showResults();
                 showToast(`Found ${state.detectedProfanities.length} profanities`, 'success');
             } catch (error) {
-                showToast('Failed to analyze file', 'error');
+                console.error('Analysis error:', error);
+                showToast('Failed to analyze file: ' + error.message, 'error');
             }
         }
 
@@ -537,9 +588,12 @@
                     });
                 }
             });
+
+            console.log('Processed blocks:', blocks.length);
+            console.log('Found profanities:', state.detectedProfanities.length);
         }
 
-        // ========== Enhanced Editor with Manual Control ==========
+        // ========== Editor Functions ==========
         function showResults() {
             elements.resultsSection.classList.remove('hidden');
             elements.profanityCount.textContent = `${state.detectedProfanities.length} profanities found`;
@@ -579,76 +633,73 @@
             const blocks = parseSRT(state.modifiedContent);
             let editorHTML = '';
 
-            blocks.forEach(block => {
-                const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
-                const hasProfanity = !!detectedItem;
-                const isReplaced = detectedItem && detectedItem.modifiedText !== detectedItem?.text;
+            if (blocks.length === 0) {
+                editorHTML = '<div class="text-center text-gray-500 py-12">No valid SRT content found</div>';
+            } else {
+                blocks.forEach(block => {
+                    const detectedItem = state.detectedProfanities.find(item => item.blockNumber === block.number);
+                    const hasProfanity = !!detectedItem;
+                    const isReplaced = detectedItem && detectedItem.modifiedText !== detectedItem?.text;
 
-                let textDisplay = block.text;
-                if (detectedItem) {
-                    // Highlight profanities with click-to-edit functionality
-                    detectedItem.profanities.sort((a, b) => b.index - a.index).forEach(p => {
-                        const originalWord = block.text.substring(p.index, p.index + p.length);
-                        const currentWord = detectedItem.modifiedText.substring(p.index, p.index + p.length);
-                        const isWordReplaced = originalWord !== currentWord;
-                        
-                        const highlightClass = isWordReplaced ? 'profanity-highlight replaced' : 'profanity-highlight';
-                        
-                        textDisplay = textDisplay.substring(0, p.index) +
-                            `<span class="${highlightClass}" onclick="openEditModal(${block.number}, ${p.index}, '${p.word}', '${p.severity}')" title="Click to edit '${p.word}'">${currentWord}</span>` +
-                            textDisplay.substring(p.index + p.length);
-                    });
-                }
+                    let textDisplay = block.text;
+                    if (detectedItem) {
+                        detectedItem.profanities.sort((a, b) => b.index - a.index).forEach(p => {
+                            const originalWord = block.text.substring(p.index, p.index + p.length);
+                            const currentWord = detectedItem.modifiedText.substring(p.index, p.index + p.length);
+                            const isWordReplaced = originalWord !== currentWord;
+                            
+                            const highlightClass = isWordReplaced ? 'profanity-highlight replaced' : 'profanity-highlight';
+                            
+                            textDisplay = textDisplay.substring(0, p.index) +
+                                `<span class="${highlightClass}" onclick="openEditModal(${block.number}, ${p.index}, '${p.word}', '${p.severity}')" title="Click to edit '${p.word}'">${currentWord}</span>` +
+                                textDisplay.substring(p.index + p.length);
+                        });
+                    }
 
-                editorHTML += `
-                    <div class="editor-line ${hasProfanity ? 'has-profanity' : ''} ${isReplaced ? 'replaced' : ''}">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="text-gray-400 text-sm font-mono">#${block.number}</div>
-                            <div class="text-gray-500 text-xs font-mono">${block.timecodes}</div>
-                        </div>
-                        <div class="text-gray-200 text-lg leading-relaxed">${textDisplay}</div>
-                        ${hasProfanity ? `
-                            <div class="flex gap-2 mt-3">
-                                <button onclick="quickReplaceAllInBlock(${block.number})" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs">
-                                    ✏️ Edit All in This Line
-                                </button>
-                                <button onclick="replaceBlockWithBleep(${block.number})" class="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded text-xs">
-                                    🔇 Censor All
-                                </button>
+                    editorHTML += `
+                        <div class="editor-line ${hasProfanity ? 'has-profanity' : ''} ${isReplaced ? 'replaced' : ''}">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-gray-400 text-sm font-mono">#${block.number}</div>
+                                <div class="text-gray-500 text-xs font-mono">${block.timecodes}</div>
                             </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
+                            <div class="text-gray-200 text-lg leading-relaxed">${textDisplay}</div>
+                            ${hasProfanity ? `
+                                <div class="flex gap-2 mt-3">
+                                    <button onclick="quickReplaceAllInBlock(${block.number})" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-xs">
+                                        ✏️ Edit All in This Line
+                                    </button>
+                                    <button onclick="replaceBlockWithBleep(${block.number})" class="bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded text-xs">
+                                        🔇 Censor All
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
 
-            elements.srtEditorContent.innerHTML = editorHTML || '<div class="text-gray-500 text-center py-8">No content to display</div>';
+            elements.srtEditorContent.innerHTML = editorHTML;
         }
 
-        // ========== Manual Editing Modal ==========
+        // ========== Modal Functions ==========
         function openEditModal(blockNumber, index, word, severity) {
             const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
             if (!item) return;
 
             state.currentEditing = { blockNumber, index, word, severity };
             
-            // Set modal content
             elements.modalTitle.textContent = `Edit: "${word}"`;
             elements.currentWord.textContent = word;
             elements.currentSeverity.textContent = severity;
             elements.currentSeverity.className = `severity-badge severity-${severity}`;
             
-            // Show context
-            const context = item.text;
-            elements.contextText.textContent = context;
+            elements.contextText.textContent = item.text;
             
-            // Generate contextual suggestions
-            generateSuggestions(word, context);
+            generateSuggestions(word, item.text);
             
-            // Clear and focus custom input
             elements.customReplacement.value = '';
             elements.customReplacement.focus();
             
-            // Show modal
             elements.editModal.classList.remove('hidden');
         }
 
@@ -659,7 +710,6 @@
             elements.suggestionsContainer.innerHTML = '';
             
             if (suggestions) {
-                // Determine context type
                 let contextType = 'mild';
                 if (context.includes('!') || context.toLowerCase().includes('angry') || context.toLowerCase().includes('mad')) {
                     contextType = 'angry';
@@ -674,11 +724,8 @@
                     chip.className = 'suggestion-chip';
                     chip.textContent = suggestion;
                     chip.onclick = () => {
-                        // Remove selected class from all chips
                         document.querySelectorAll('.suggestion-chip').forEach(c => c.classList.remove('selected'));
-                        // Add to clicked chip
                         chip.classList.add('selected');
-                        // Set as custom replacement
                         elements.customReplacement.value = suggestion;
                         elements.customReplacement.focus();
                     };
@@ -686,7 +733,6 @@
                 });
             }
             
-            // Always add "bleep" as an option
             const bleepChip = document.createElement('div');
             bleepChip.className = 'suggestion-chip';
             bleepChip.textContent = 'bleep';
@@ -718,13 +764,11 @@
 
             item.modifiedText = item.modifiedText.substring(0, start) + replacement + item.modifiedText.substring(start + wordLength);
 
-            // Update profanity tracking
             const profanity = item.profanities.find(p => p.index == index && p.word == word);
             if (profanity) {
                 if (replacement !== 'bleep') {
                     profanity.word = replacement;
                     profanity.length = replacement.length;
-                    // Update indices of subsequent profanities
                     item.profanities.forEach(p => {
                         if (p.index > start) {
                             p.index += replacement.length - wordLength;
@@ -745,16 +789,8 @@
         }
 
         function keepOriginal() {
-            if (!state.currentEditing) return;
-            
-            const { blockNumber, index, word } = state.currentEditing;
-            const item = state.detectedProfanities.find(item => item.blockNumber === blockNumber);
-            if (item) {
-                // Mark as reviewed but keep original
-                showToast('Kept original word', 'info');
-            }
-            
             closeEditModal();
+            showToast('Kept original word', 'info');
         }
 
         function closeEditModal() {
@@ -786,12 +822,11 @@
 
             const oldValue = item.modifiedText;
             item.profanities.forEach((p, index) => {
-                const replacement = replacements[index] || p.word; // Keep original if no replacement provided
+                const replacement = replacements[index] || p.word;
                 const regex = new RegExp(`\\b${escapeRegExp(p.word)}\\b`, 'gi');
                 item.modifiedText = item.modifiedText.replace(regex, replacement);
             });
 
-            // Re-analyze the block
             item.profanities = findProfanities(item.modifiedText, getCombinedWordList());
             item.severity = determineSeverity(item.profanities, getCombinedWordList());
             state.editHistory.push({ blockNumber, oldValue, newValue: item.modifiedText });
@@ -862,12 +897,10 @@
             elements.analyzeBtn.addEventListener('click', analyzeContent);
             elements.downloadBtn.addEventListener('click', downloadCleanedFile);
             
-            // Modal events
             elements.applyReplacement.addEventListener('click', applyReplacement);
             elements.keepOriginal.addEventListener('click', keepOriginal);
             elements.cancelEdit.addEventListener('click', closeEditModal);
             
-            // Keyboard shortcuts in modal
             elements.customReplacement.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     applyReplacement();
@@ -876,7 +909,6 @@
                 }
             });
             
-            // Close modal on background click
             elements.editModal.addEventListener('click', (e) => {
                 if (e.target === elements.editModal) {
                     closeEditModal();
@@ -899,9 +931,7 @@
             }, 4000);
         }
 
-        // ========== Keep your existing utility functions ==========
-        // (readFile, parseSRT, findProfanities, escapeRegExp, determineSeverity, validateSRTContent)
-
+        // ========== Core Utility Functions ==========
         function readFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -984,6 +1014,12 @@
         function validateSRTContent(content) {
             return content && content.trim().length > 0;
         }
+
+        // Make functions globally available for onclick handlers
+        window.openEditModal = openEditModal;
+        window.quickReplaceAllInBlock = quickReplaceAllInBlock;
+        window.replaceBlockWithBleep = replaceBlockWithBleep;
+        window.replaceBlockWithCustom = replaceBlockWithCustom;
     </script>
 </body>
 </html>
